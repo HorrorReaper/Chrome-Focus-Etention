@@ -11,6 +11,24 @@ const motivationalQuotes = [
   "One way to boost our willpower and focus is to manage our distractions instead of letting them manage us."
 ];
 
+let blockedDomain = null;
+let blockedFullUrl = null;
+let currentAnswer = null;
+let mathChallengeEnabled = false;
+
+chrome.storage.sync.get(["enableMathChallenge"], (data) => {
+  mathChallengeEnabled = !!data.enableMathChallenge;
+  initChallengeUI();
+});
+
+// Keep in sync if the user changes the setting while this page is open
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.enableMathChallenge) {
+    mathChallengeEnabled = !!changes.enableMathChallenge.newValue;
+    initChallengeUI();
+  }
+});
+
 // Get the blocked URL
 const urlParams = new URLSearchParams(window.location.search);
 const blockedUrl = urlParams.get('url');
@@ -199,3 +217,125 @@ chrome.runtime.onMessage.addListener((msg) => {
     loadState();
   }
 });
+(function initBlockedDomain() {
+  const params = new URLSearchParams(window.location.search);
+  const urlStr = params.get("url");
+  if (!urlStr) return;
+  blockedFullUrl = urlStr;
+
+  try {
+    const u = new URL(urlStr);
+    blockedDomain = u.hostname.replace(/^www\./, "").toLowerCase();
+    const el = document.getElementById("blocked-url");
+    if (el) el.textContent = blockedDomain;
+  } catch (e) {
+    blockedDomain = null;
+  }
+})();
+
+function initChallengeUI() {
+  const container = document.getElementById("challengeContainer");
+  if (!container) return;
+
+  if (!mathChallengeEnabled) {
+    // hide if disabled in settings
+    container.style.display = "none";
+    return;
+  }
+
+  container.style.display = "flex";
+  generateChallenge();
+  // focus input for convenience
+  const input = document.getElementById('challengeAnswer');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+}
+
+function generateChallenge() {
+  // Keep numbers modest so it's fast to compute during a block
+  const a = Math.floor(Math.random() * 12) + 1;
+  const b = Math.floor(Math.random() * 12) + 1;
+  currentAnswer = a + b;
+  const qEl = document.getElementById("challengeQuestion");
+  if (qEl) qEl.textContent = `What is ${a} + ${b}?`;
+}
+
+// Unlock button handler
+const unlockBtn = document.getElementById("unlockButton");
+if (unlockBtn) {
+  unlockBtn.onclick = () => {
+    if (!blockedDomain || !blockedFullUrl) {
+      alert("Could not detect the blocked site.");
+      return;
+    }
+
+    const minutesInput = document.getElementById("unlockMinutes");
+    const minutes = Math.max(
+      1,
+      Math.min(240, parseInt(minutesInput.value, 10) || 0)
+    );
+
+    // If challenge is enabled globally, enforce it
+    if (mathChallengeEnabled) {
+      const answerInput = document.getElementById("challengeAnswer");
+      if (!answerInput) {
+        alert('Challenge input missing — cannot verify.');
+        return;
+      }
+      const raw = (answerInput.value || '').toString().trim();
+      const userAns = raw === '' ? NaN : Number(raw);
+      if (!Number.isFinite(userAns) || userAns !== currentAnswer) {
+        alert("Wrong answer. Try again!");
+        generateChallenge();
+        answerInput.value = "";
+        answerInput.focus();
+        return;
+      }
+    }
+
+    // First try to ask the background service worker to perform the unlock
+    // (it will update storage, create alarms and update rules before responding).
+    let responded = false;
+    const finish = (success) => {
+      if (responded) return;
+      responded = true;
+      if (success) window.location.href = blockedFullUrl;
+      else alert('Could not unlock the site. Please try again.');
+    };
+
+    // Fallback path (direct storage write) used when messaging fails or times out
+    const doFallback = () => {
+      const expireTs = Date.now() + minutes * 60000;
+      chrome.storage.sync.get(["temporaryUnlocks"], (data) => {
+        const tmp = data.temporaryUnlocks || {};
+        tmp[blockedDomain] = expireTs;
+        chrome.storage.sync.set({ temporaryUnlocks: tmp }, () => {
+          // give the background a moment to pick up the change
+          setTimeout(() => { window.location.href = blockedFullUrl; }, 300);
+        });
+      });
+    };
+
+    const timeout = setTimeout(() => {
+      if (responded) return;
+      doFallback();
+    }, 2000);
+
+    try {
+      chrome.runtime.sendMessage({ type: 'unlockSite', domain: blockedDomain, minutes }, (resp) => {
+        clearTimeout(timeout);
+        if (chrome.runtime.lastError) {
+          // messaging failed -> fallback
+          doFallback();
+          return;
+        }
+        finish(true);
+      });
+    } catch (e) {
+      clearTimeout(timeout);
+      doFallback();
+    }
+  };
+}

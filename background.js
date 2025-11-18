@@ -9,6 +9,8 @@ let pomodoroBreak = 5;
 let pomodoroLongBreak = 15;
 let currentCycle = 0;   // 0 = work, 1 = break
 let pomodoroCount = 0;  // completed work cycles
+let temporaryUnlocks = {}; // { domain: expireTimestampMs }
+
 
 // NEW: pause state
 let paused = false;
@@ -29,6 +31,7 @@ chrome.storage.sync.get(
     "pomodoroCount",
     "paused",
     "pausedRemaining",
+    "temporaryUnlocks"
   ],
   (data) => {
     lists = data.lists || { Default: [] };
@@ -44,6 +47,7 @@ chrome.storage.sync.get(
     pomodoroCount = data.pomodoroCount || 0;
     paused = data.paused || false;
     pausedRemaining = typeof data.pausedRemaining === "number" ? data.pausedRemaining : null;
+    temporaryUnlocks = data.temporaryUnlocks || {};
 
     updateBlockRule();
     if (enabled && timerEnd && timerEnd > Date.now()) {
@@ -66,18 +70,46 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.pomodoroCount) pomodoroCount = changes.pomodoroCount.newValue;
   if (changes.paused) paused = changes.paused.newValue;
   if (changes.pausedRemaining) pausedRemaining = changes.pausedRemaining.newValue;
+  // If temporaryUnlocks changed in storage, update local copy and create alarms for new entries
+  if (changes.temporaryUnlocks) {
+    const newVal = changes.temporaryUnlocks.newValue || {};
+    const oldVal = changes.temporaryUnlocks.oldValue || {};
+    // create alarms for any newly added unlocks
+    Object.entries(newVal).forEach(([domain, ts]) => {
+      if ((!oldVal || !oldVal[domain]) && ts && ts > Date.now()) {
+        try {
+          chrome.alarms.create("unlock:" + domain, { when: ts });
+        } catch (e) {
+          console.error('Failed to create unlock alarm for', domain, e);
+        }
+      }
+    });
+    temporaryUnlocks = newVal;
+  }
 
   updateBlockRule();
   chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  // handle unlock alarms (name: unlock:DOMAIN)
+  if (alarm.name && alarm.name.startsWith("unlock:")) {
+    const domain = alarm.name.substring("unlock:".length);
+    if (temporaryUnlocks[domain]) {
+      delete temporaryUnlocks[domain];
+      chrome.storage.sync.set({ temporaryUnlocks }, () => {
+        updateBlockRule();
+        chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
+      });
+    }
+    return;
+  }
+
   if (alarm.name !== "timerExpire") return;
 
   // when alarm fires, timer is done, so clear pause flags too
   paused = false;
   pausedRemaining = null;
-
   if (pomodoroMode) {
     if (currentCycle === 0) {
       // end of work session
@@ -102,6 +134,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       pausedRemaining: null,
     });
   }
+  if (changes.temporaryUnlocks)
+  temporaryUnlocks = changes.temporaryUnlocks.newValue || {};
+
 
   chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
 });
@@ -141,7 +176,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === "pauseTimer") {
     pauseTimer();
     sendResponse({ success: true });
-  } else if (message.type === "resumeTimer") {
+  } else if (message.type === "unlockSite") {
+  const { domain, minutes } = message;
+  if (!domain || !minutes || minutes <= 0) {
+    sendResponse({ success: false });
+    return true;
+  }
+
+  const expireTs = Date.now() + minutes * 60000;
+  temporaryUnlocks[domain] = expireTs;
+
+  chrome.storage.sync.set({ temporaryUnlocks }, () => {
+    // create an alarm to remove it later
+    chrome.alarms.create("unlock:" + domain, { when: expireTs });
+    updateBlockRule();
+    chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
+    sendResponse({ success: true });
+  });
+  return true;
+}else if (message.type === "resumeTimer") {
     resumeTimer();
     sendResponse({ success: true });
   } else if (message.type === "stopTimer") {
@@ -270,8 +323,27 @@ async function updateBlockRule() {
   const oldRules = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = oldRules.map((rule) => rule.id);
 
+  const now = Date.now();
+
+  // permanent whitelist
+  const baseWhitelist = lists[activeList] || [];
+
+  // temporary domains that are still valid
+  const tempDomains = Object.entries(temporaryUnlocks)
+    .filter(([_, ts]) => ts > now)
+    .map(([domain]) => domain);
+
+  // also clean up expired from memory
+  const stillValid = {};
+  Object.entries(temporaryUnlocks).forEach(([d, ts]) => {
+    if (ts > now) stillValid[d] = ts;
+  });
+  temporaryUnlocks = stillValid;
+  chrome.storage.sync.set({ temporaryUnlocks });
+
+  const actualWhitelist = [...new Set([...baseWhitelist, ...tempDomains])];
+
   const newRules = [];
-  const whitelist = lists[activeList] || [];
 
   if (enabled) {
     newRules.push({
@@ -288,7 +360,7 @@ async function updateBlockRule() {
       condition: {
         regexFilter: "^(https?://.*)$",
         resourceTypes: ["main_frame"],
-        excludedRequestDomains: whitelist,
+        excludedRequestDomains: actualWhitelist,
       },
     });
   }
@@ -298,6 +370,7 @@ async function updateBlockRule() {
     addRules: newRules,
   });
 }
+
 
 function setAlarm(minutes) {
   if (minutes > 0) {

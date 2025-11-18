@@ -8,6 +8,8 @@
 </head>
 <body>
   <!-- Background + overlay handled in CSS -->
+   <div id="ytBackground" class="yt-bg hidden"></div>
+
 
   <!-- Top-left brand (like the Focus screenshot) -->
   <div class="brand-badge">
@@ -163,6 +165,31 @@
             />
           </div>
         </div>
+        <div class="settings-row">
+  <label class="settings-label" for="youtubeBgUrl">
+    YouTube background (optional)
+  </label>
+  <input
+    type="text"
+    id="youtubeBgUrl"
+    class="text-input"
+    placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+  />
+</div>
+
+<div class="settings-row settings-toggle">
+  <label class="settings-label" for="useYoutubeBg">
+    Use YouTube video as background
+  </label>
+  <input type="checkbox" id="useYoutubeBg" />
+</div>
+<div class="settings-row settings-toggle">
+  <label class="settings-label" for="enableMathChallenge">
+    Require math challenge to unlock blocked sites
+  </label>
+  <input type="checkbox" id="enableMathChallenge" />
+</div>
+
 
         <button id="saveSettings" class="primary-btn full-width">
           Save Settings

@@ -505,3 +505,22 @@ body::before {
     width: 100%;
   }
 }
+.yt-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.yt-bg iframe {
+  width: 120%;
+  height: 120%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* body overlay already darkens it, so no extra changes needed */
+
