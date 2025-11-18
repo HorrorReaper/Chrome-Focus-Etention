@@ -1,91 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Startpage</title>
-    <link rel="stylesheet" href="newtab.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Startpage</title>
+  <link rel="stylesheet" href="newtab.css" />
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎯 Focus Mode</h1>
-            <div id="headerClock" class="header-clock">--:--</div>
-        </header>
+  <!-- Background + overlay handled in CSS -->
 
-        <nav class="tabs">
-            <button id="clockTab" class="tab">⏰ Clock</button>
-            <button id="focusTab" class="tab active">🎯 Focus</button>
-            <button id="todoTab" class="tab">📝 To-Do</button>
-            <button id="settingsTab" class="tab">⚙️ Settings</button>
-        </nav>
-
-        <!-- Clock Display -->
-        <div id="clockDisplay" class="content hidden">
-            <div class="clock-section">
-                <div id="currentTime" class="time-display">00:00:00</div>
-                <div id="currentDate" class="date-display">Loading...</div>
-            </div>
-            <div class="quote-section">
-                <div id="quoteText" class="quote-text">"Loading quote..."</div>
-                <div id="quoteAuthor" class="quote-author">- Anonymous</div>
-            </div>
-        </div>
-
-        <!-- Timer & Whitelist (Focus Tab) -->
-        <div class="timer-container">
-            <div id="timer" class="timer-section">
-                <!-- Timer will be rendered here -->
-            </div>
-        </div>
-
-        <div id="whitelistDisplay" class="whitelist-section">
-            <h3>Active Whitelist: <span id="activeListName">Default</span></h3>
-            <ul id="domainList"></ul>
-        </div>
-
-        <!-- To-Do List -->
-        <div id="todoDisplay" class="content hidden">
-            <h3>To-Do List for <span id="todoListName">Default</span></h3>
-            <div class="todo-input-container">
-                <input type="text" id="newTodoInput" placeholder="Add a new task..." />
-                <button id="addTodoButton" class="btn btn-primary">➕ Add</button>
-            </div>
-            <ul id="todo-list"></ul>
-        </div>
-
-        <!-- Settings -->
-        <div id="settingsPanel" class="content hidden">
-            <div class="settings-section">
-                <h3>Active List</h3>
-                <select id="list-select"></select>
-                <button id="new-list" class="btn">+ New List</button>
-                
-                <h3>Domains for Current List</h3>
-                <div class="domain-input">
-                    <input type="text" id="domain-input" placeholder="example.com" />
-                    <button id="add-domain" class="btn btn-primary">Add Domain</button>
-                </div>
-                <ul id="domain-list"></ul>
-
-                <h3>Timer Settings</h3>
-                <label class="toggle-label">
-                    <input type="checkbox" id="pomodoro-toggle" />
-                    <span>Enable Pomodoro Mode</span>
-                </label>
-
-                <div id="pomodoro-config" class="pomodoro-config hidden">
-                    <div class="config-row">
-                        <label>Work: <input type="number" id="pomo-work" value="25" min="1" max="120" /> min</label>
-                        <label>Break: <input type="number" id="pomo-break" value="5" min="1" max="60" /> min</label>
-                        <label>Long Break: <input type="number" id="pomo-long" value="15" min="1" max="60" /> min</label>
-                    </div>
-                    <button id="save-pomo" class="btn btn-primary">Save Pomodoro Settings</button>
-                </div>
-            </div>
-        </div>
+  <!-- Top-left brand (like the Focus screenshot) -->
+  <div class="brand-badge">
+    <div class="brand-lines">
+      <span>FOCUS V1.0.0</span>
+      <span>CREATED BY YOU.</span>
+      <span>STAY ON TASK.</span>
     </div>
+  </div>
 
-    <script src="newtab.js"></script>
+  <!-- Top-right icons -->
+  <div class="top-icons">
+    <button class="icon-btn" aria-label="Settings">
+      ⚙
+    </button>
+    <button class="icon-btn" aria-label="Info">
+      ⓘ
+    </button>
+  </div>
+
+  <!-- Centered tab navigation -->
+  <div class="top-nav">
+    <button id="clockTab" class="nav-tab active">CLOCK</button>
+    <button id="focusTab" class="nav-tab">FOCUS</button>
+    <button id="todoTab" class="nav-tab">TO‑DO</button>
+    <button id="settingsTab" class="nav-tab">SETTINGS</button>
+  </div>
+
+  <!-- Main area -->
+  <main class="main-content">
+    <!-- CLOCK TAB -->
+    <section id="clockDisplay" class="panel">
+      <div class="clock-container">
+        <div id="currentTime" class="big-clock">00:00:00</div>
+        <div id="currentDate" class="date-line">Loading date...</div>
+      </div>
+
+      <div id="quoteContainer" class="quote-container">
+        <p id="quoteText" class="quote-text">"Loading quote..."</p>
+        <p id="quoteAuthor" class="quote-author">— Author</p>
+      </div>
+    </section>
+
+    <!-- FOCUS TAB -->
+    <section class="panel timer-panel hidden timer-container">
+      <div class="timer-block card">
+        <div id="timerDisplay" class="focus-timer">00:00</div>
+        <div id="cycleInfo" class="cycle-info"></div>
+        <div class="timer-controls">
+          <input
+            type="number"
+            id="timerInput"
+            class="timer-input"
+            min="0"
+            value="25"
+            placeholder="Minutes (0 = unlimited)"
+          />
+          <button id="startButton" class="primary-btn large-round">Start</button>
+        </div>
+      </div>
+
+      <div id="whitelistDisplay" class="card whitelist-card">
+        <div class="card-title">ACTIVE WHITELIST:</div>
+        <div class="whitelist-name" id="activeListName">Default</div>
+        <ul id="domainList" class="whitelist-list"></ul>
+      </div>
+    </section>
+
+    <!-- TO‑DO TAB -->
+    <section id="todoDisplay" class="panel hidden">
+      <div class="card todo-card">
+        <div class="card-header">
+          <div class="card-title">
+            To‑Do List for <span id="todoListName">Default</span>
+          </div>
+        </div>
+        <div class="todo-input-row">
+          <input
+            type="text"
+            id="newTodoInput"
+            class="text-input"
+            placeholder="Enter a task..."
+          />
+          <button id="addTodoButton" class="primary-btn">Add Task</button>
+        </div>
+        <ul id="todoList" class="todo-list"></ul>
+      </div>
+    </section>
+
+    <!-- SETTINGS TAB -->
+    <section id="settingsPanel" class="panel hidden">
+      <div class="card settings-card">
+        <div class="card-title">Timer & Lists</div>
+
+        <div class="settings-row">
+          <label class="settings-label" for="listSelect">Active List</label>
+          <select id="listSelect" class="select-input"></select>
+        </div>
+
+        <div class="settings-row">
+          <label class="settings-label" for="timerInput">
+            Default timer (minutes, 0 = unlimited)
+          </label>
+          <input
+            type="number"
+            id="settingsTimerInput"
+            class="number-input"
+            min="0"
+            value="25"
+            disabled
+          />
+          <span class="settings-hint">(uses same value as focus timer)</span>
+        </div>
+
+        <div class="settings-row settings-toggle">
+          <label class="settings-label" for="pomodoroToggle">
+            Enable Pomodoro Mode
+          </label>
+          <input type="checkbox" id="pomodoroToggle" />
+        </div>
+
+        <div id="pomodoroOptions" class="pomodoro-options hidden">
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroWork">Work (min)</label>
+            <input
+              type="number"
+              id="pomodoroWork"
+              class="number-input"
+              min="1"
+              value="25"
+            />
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroBreak">Break (min)</label>
+            <input
+              type="number"
+              id="pomodoroBreak"
+              class="number-input"
+              min="1"
+              value="5"
+            />
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroLongBreak">
+              Long Break (min)
+            </label>
+            <input
+              type="number"
+              id="pomodoroLongBreak"
+              class="number-input"
+              min="1"
+              value="15"
+            />
+          </div>
+        </div>
+
+        <button id="saveSettings" class="primary-btn full-width">
+          Save Settings
+        </button>
+      </div>
+    </section>
+  </main>
+
+
+  <script src="newtab.js"></script>
 </body>
 </html>
