@@ -186,12 +186,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const expireTs = Date.now() + minutes * 60000;
   temporaryUnlocks[domain] = expireTs;
 
-  chrome.storage.sync.set({ temporaryUnlocks }, () => {
+  chrome.storage.sync.set({ temporaryUnlocks }, async () => {
     // create an alarm to remove it later
-    chrome.alarms.create("unlock:" + domain, { when: expireTs });
-    updateBlockRule();
-    chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
-    sendResponse({ success: true });
+    try {
+      chrome.alarms.create("unlock:" + domain, { when: expireTs });
+    } catch (e) {
+      console.error('Failed to create unlock alarm for', domain, e);
+    }
+
+    // Ensure block rules are updated before we respond so the blocked page
+    // can navigate back to the target URL without being immediately redirected again.
+    try {
+      await updateBlockRule();
+      chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
+      sendResponse({ success: true });
+    } catch (err) {
+      console.error('Error applying block rules during unlock:', err);
+      sendResponse({ success: false });
+    }
   });
   return true;
 }else if (message.type === "resumeTimer") {

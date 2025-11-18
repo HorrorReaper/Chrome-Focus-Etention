@@ -51,23 +51,106 @@ let timerStartTime = null;
 let timerDuration = null;
 
 function loadState() {
+  console.log('[blocked] requesting state from background');
+  let didRespond = false;
+  const timer = setTimeout(() => {
+    if (didRespond) return;
+    console.warn('[blocked] getState timed out — falling back to storage');
+    // fallback to reading storage directly
+    chrome.storage.sync.get([
+      'enabled','timerEnd','todos','activeList','pomodoroMode','pomodoroWork','pomodoroBreak','pomodoroLongBreak','currentCycle','pomodoroCount','paused','pausedRemaining'
+    ], (data) => {
+      if (chrome.runtime.lastError) {
+        console.error('[blocked] storage.get error:', chrome.runtime.lastError);
+        return;
+      }
+      const fallbackState = {
+        enabled: data.enabled,
+        timerEnd: data.timerEnd,
+        todos: data.todos,
+        activeList: data.activeList,
+        pomodoroMode: data.pomodoroMode,
+        pomodoroWork: data.pomodoroWork,
+        pomodoroBreak: data.pomodoroBreak,
+        pomodoroLongBreak: data.pomodoroLongBreak,
+        currentCycle: data.currentCycle,
+        pomodoroCount: data.pomodoroCount,
+        paused: data.paused,
+        pausedRemaining: data.pausedRemaining,
+      };
+      console.log('[blocked] fallback state from storage', fallbackState);
+      updateTimer(fallbackState);
+      updateTodos(fallbackState);
+    });
+  }, 800);
+
   chrome.runtime.sendMessage({ type: 'getState' }, (state) => {
-    if (!state) return;
-    
+    didRespond = true;
+    clearTimeout(timer);
+    if (chrome.runtime.lastError) {
+      console.warn('[blocked] getState error — will try storage fallback', chrome.runtime.lastError);
+      // try storage fallback immediately
+      chrome.storage.sync.get([
+        'enabled','timerEnd','todos','activeList','pomodoroMode','pomodoroWork','pomodoroBreak','pomodoroLongBreak','currentCycle','pomodoroCount','paused','pausedRemaining'
+      ], (data) => {
+        if (chrome.runtime.lastError) {
+          console.error('[blocked] storage.get error:', chrome.runtime.lastError);
+          return;
+        }
+        const fallbackState = {
+          enabled: data.enabled,
+          timerEnd: data.timerEnd,
+          todos: data.todos,
+          activeList: data.activeList,
+          pomodoroMode: data.pomodoroMode,
+          pomodoroWork: data.pomodoroWork,
+          pomodoroBreak: data.pomodoroBreak,
+          pomodoroLongBreak: data.pomodoroLongBreak,
+          currentCycle: data.currentCycle,
+          pomodoroCount: data.pomodoroCount,
+          paused: data.paused,
+          pausedRemaining: data.pausedRemaining,
+        };
+        console.log('[blocked] fallback state from storage', fallbackState);
+        updateTimer(fallbackState);
+        updateTodos(fallbackState);
+      });
+      return;
+    }
+    if (!state) {
+      console.warn('[blocked] getState returned empty state — trying storage fallback');
+      chrome.storage.sync.get(['enabled','timerEnd','todos','activeList'], (data) => {
+        const fallbackState = {
+          enabled: data.enabled,
+          timerEnd: data.timerEnd,
+          todos: data.todos,
+          activeList: data.activeList,
+        };
+        updateTimer(fallbackState);
+        updateTodos(fallbackState);
+      });
+      return;
+    }
+    console.log('[blocked] received state', state);
     updateTimer(state);
     updateTodos(state);
   });
 }
 
 function updateTimer(state) {
-  const timerDisplay = document.getElementById('timer-display');
-  const timerLabel = document.getElementById('timer-label');
-  const progressFill = document.getElementById('progress-fill');
+  const timerDisplay = document.getElementById('timer-display') || document.getElementById('timer_display');
+  const timerLabel = document.getElementById('timer-label') || document.getElementById('timer_label');
+  const progressFill = document.getElementById('progress-fill') || document.getElementById('progress_fill');
+
+  if (!timerDisplay || !timerLabel) {
+    console.warn('[blocked] timer elements missing in DOM — aborting updateTimer');
+    return;
+  }
   
   if (!state.enabled || !state.timerEnd) {
     timerDisplay.textContent = 'Timer Off';
     timerLabel.textContent = 'No active timer';
-    progressFill.style.width = '0%';
+    if (progressFill) try { progressFill.style.width = '0%'; } catch (e) { console.warn('[blocked] progressFill style error', e); }
     if (timerInterval) {
       clearInterval(timerInterval);
       timerInterval = null;
@@ -96,10 +179,10 @@ function updateTimer(state) {
   
   // Clear existing interval
   if (timerInterval) clearInterval(timerInterval);
-  
+
   // Update timer display
   updateTimerDisplay(state);
-  timerInterval = setInterval(() => updateTimerDisplay(state), 100);
+  if (!timerInterval) timerInterval = setInterval(() => updateTimerDisplay(state), 100);
   
   // Update label
   if (state.pomodoroMode) {
@@ -115,15 +198,22 @@ function updateTimer(state) {
 }
 
 function updateTimerDisplay(state) {
-  const timerDisplay = document.getElementById('timer-display');
-  const progressFill = document.getElementById('progress-fill');
+  const timerDisplay = document.getElementById('timer-display') || document.getElementById('timer_display');
+  const progressFill = document.getElementById('progress-fill') || document.getElementById('progress_fill');
+
+  if (!timerDisplay) {
+    console.warn('[blocked] updateTimerDisplay: timer-display element not found, aborting.');
+    return;
+  }
   
   const now = Date.now();
   const remaining = Math.max(0, state.timerEnd - now);
   
   if (remaining === 0) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
     setTimeout(loadState, 500);
     return;
   }
@@ -135,29 +225,48 @@ function updateTimerDisplay(state) {
   timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   
   // Update progress bar
-  if (timerDuration > 0) {
-    const elapsed = now - timerStartTime;
-    const progress = Math.min(100, (elapsed / timerDuration) * 100);
-    progressFill.style.width = `${progress}%`;
+  if (timerDuration > 0 && progressFill) {
+    try {
+      const elapsed = now - timerStartTime;
+      const progress = Math.min(100, (elapsed / timerDuration) * 100);
+      progressFill.style.width = `${progress}%`;
+    } catch (e) {
+      console.warn('[blocked] error updating progressFill', e);
+    }
   }
 }
 
 function updateTodos(state) {
   const todoList = document.getElementById('todo-list');
   const todos = state.todos?.[state.activeList] || [];
-  
+
   if (todos.length === 0) {
-    todoList.innerHTML = '<div class="empty-todos">No tasks yet. Add some from your new tab!</div>';
+    // render an empty hint depending on list type
+    if (todoList.tagName === 'UL') {
+      todoList.innerHTML = '<li class="empty-todos">No tasks yet. Add some from your new tab!</li>';
+    } else {
+      todoList.innerHTML = '<div class="empty-todos">No tasks yet. Add some from your new tab!</div>';
+    }
     return;
   }
-  
-  todoList.innerHTML = todos.map((todo, i) => `
-    <div class="todo-item ${todo.done ? 'done' : ''}">
-      <input type="checkbox" class="todo-checkbox" ${todo.done ? 'checked' : ''} data-index="${i}" />
-      <span class="todo-text">${escapeHtml(todo.text)}</span>
-    </div>
-  `).join('');
-  
+
+  // Render as list items if container is UL, otherwise use divs
+  if (todoList.tagName === 'UL') {
+    todoList.innerHTML = todos.map((todo, i) => `
+      <li class="todo-item ${todo.done ? 'done' : ''}">
+        <input type="checkbox" class="todo-checkbox" ${todo.done ? 'checked' : ''} data-index="${i}" />
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+      </li>
+    `).join('');
+  } else {
+    todoList.innerHTML = todos.map((todo, i) => `
+      <div class="todo-item ${todo.done ? 'done' : ''}">
+        <input type="checkbox" class="todo-checkbox" ${todo.done ? 'checked' : ''} data-index="${i}" />
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+      </div>
+    `).join('');
+  }
+
   // Attach checkbox listeners
   todoList.querySelectorAll('.todo-checkbox').forEach(cb => {
     cb.onchange = () => {
@@ -301,7 +410,9 @@ if (unlockBtn) {
     const finish = (success) => {
       if (responded) return;
       responded = true;
-      if (success) window.location.href = blockedFullUrl;
+      if (success){
+        window.location.href = blockedFullUrl;
+      } 
       else alert('Could not unlock the site. Please try again.');
     };
 
