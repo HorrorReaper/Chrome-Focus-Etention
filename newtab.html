@@ -101,7 +101,31 @@
 
         <div class="settings-row">
           <label class="settings-label" for="listSelect">Active List</label>
-          <select id="listSelect" class="select-input"></select>
+          <div class="select-with-action">
+            <select id="listSelect" class="select-input"></select>
+            <button id="configureListButton" class="secondary-btn">Configure</button>
+          </div>
+        </div>
+        <div id="listEditorPanel" class="hidden">
+        <div class="settings-row list-management">
+          <label class="settings-label">Manage Lists</label>
+          <div class="list-controls">
+            <input type="text" id="newListName" class="text-input" placeholder="New list name" />
+            <button id="createList" class="secondary-btn">Create</button>
+            <button id="renameList" class="secondary-btn">Rename</button>
+            <button id="deleteList" class="warn-btn">Delete</button>
+          </div>
+        </div>
+
+        <div class="settings-row list-urls">
+          <label class="settings-label">URLs in list</label>
+          <div class="url-controls">
+            <input type="text" id="newListUrl" class="text-input" placeholder="example.com or https://site.com/path" />
+            <button id="addListUrlButton" class="secondary-btn">Add URL</button>
+          </div>
+          <ul id="settingsDomainList" class="whitelist-list"></ul>
+        </div>
+        </div>
         </div>
 
         <div class="settings-row">

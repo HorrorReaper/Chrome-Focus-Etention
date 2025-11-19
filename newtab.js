@@ -10,7 +10,10 @@ let state = {
   enabled: false,
   timerEnd: null,
   activeList: "Default",
-  lists: { Default: [] },
+  lists: {
+  Default: []
+},
+
   todos: { Default: [] },
   pomodoroMode: false,
   pomodoroWork: 25,
@@ -33,6 +36,70 @@ function updateState() {
   });
 }
 
+// Helper: normalize input to a hostname (try to accept full URLs or plain domains)
+function normalizeDomain(input) {
+  try {
+    // If input already looks like a domain without scheme, try adding https
+    if (!/^[a-zA-Z]+:\/\//.test(input)) {
+      input = 'https://' + input;
+    }
+    const u = new URL(input);
+    return u.hostname;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Render the domain list editor in settings
+function renderListEditor() {
+  const container = document.getElementById('settingsDomainList');
+  if (!container) return;
+  container.innerHTML = '';
+  const entries = (state.lists && state.lists[state.activeList]) || [];
+  entries.forEach((entry, idx) => {
+    const url = (entry && (entry.url || entry.domain)) || String(entry || '');
+    const requireFlag = entry && (entry.requireChallenge || entry.requireChallenge === true || entry.challengeRequired || false);
+    const li = document.createElement('li');
+    li.className = 'whitelist-item';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!requireFlag;
+    cb.dataset.index = idx;
+    cb.onchange = (e) => {
+      const i = Number(e.target.dataset.index);
+      const listName = document.getElementById('listSelect').value || state.activeList;
+      const newLists = { ...state.lists };
+      const arr = (newLists[listName] || []).slice();
+      arr[i] = arr[i] || {};
+      arr[i].requireChallenge = !!e.target.checked;
+      newLists[listName] = arr;
+      chrome.storage.sync.set({ lists: newLists }, () => updateState());
+    };
+
+    const span = document.createElement('span');
+    span.textContent = url;
+    span.className = 'whitelist-url';
+
+    const del = document.createElement('button');
+    del.textContent = 'Remove';
+    del.className = 'btn-delete';
+    del.dataset.index = idx;
+    del.onclick = (e) => {
+      const i = Number(e.target.dataset.index);
+      const listName = document.getElementById('listSelect').value || state.activeList;
+      const newLists = { ...state.lists };
+      const arr = (newLists[listName] || []).slice();
+      arr.splice(i, 1);
+      newLists[listName] = arr;
+      chrome.storage.sync.set({ lists: newLists }, () => updateState());
+    };
+
+    li.append(cb, span, del);
+    container.appendChild(li);
+  });
+}
+
 function updateUI() {
   // Whitelist
   document.getElementById("activeListName").textContent = state.activeList;
@@ -40,7 +107,8 @@ function updateUI() {
   domainList.innerHTML = "";
   (state.lists[state.activeList] || []).forEach((domain) => {
     const li = document.createElement("li");
-    li.textContent = domain;
+    const url = typeof domain === 'string' ? domain : (domain.url || domain.domain || '');
+    li.textContent = url;
     domainList.appendChild(li);
   });
 
@@ -58,6 +126,9 @@ function updateUI() {
     if (name === state.activeList) option.selected = true;
     listSelect.appendChild(option);
   });
+
+  // Render the list editor (URLs + checkboxes)
+  renderListEditor();
 
   // Settings: Pomodoro
   document.getElementById("pomodoroToggle").checked = state.pomodoroMode;
@@ -157,6 +228,73 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.sync.set({ activeList: e.target.value }, () => {
       updateState();
     });
+  };
+
+  // Configure button toggles the list editor panel
+  const cfgBtn = document.getElementById('configureListButton');
+  if (cfgBtn) {
+    cfgBtn.onclick = () => {
+      const panel = document.getElementById('listEditorPanel');
+      if (!panel) return;
+      const isHidden = panel.classList.toggle('hidden');
+      if (!isHidden) {
+        // panel opened: focus name input
+        const nameInput = document.getElementById('newListName');
+        if (nameInput) nameInput.focus();
+      }
+    };
+  }
+
+  // List management controls
+  document.getElementById('createList').onclick = () => {
+    const name = document.getElementById('newListName').value.trim();
+    if (!name) return alert('Please enter a list name');
+    if (state.lists[name]) return alert('List already exists');
+    const newLists = { ...state.lists, [name]: [] };
+    chrome.storage.sync.set({ lists: newLists, activeList: name }, () => updateState());
+  };
+
+  document.getElementById('renameList').onclick = () => {
+    const oldName = document.getElementById('listSelect').value;
+    const newName = document.getElementById('newListName').value.trim();
+    if (!newName) return alert('Please enter a new name');
+    if (state.lists[newName]) return alert('A list with that name already exists');
+    const newLists = { ...state.lists };
+    newLists[newName] = newLists[oldName] || [];
+    delete newLists[oldName];
+    const newTodos = { ...(state.todos || {}) };
+    if (newTodos[oldName]) {
+      newTodos[newName] = newTodos[oldName];
+      delete newTodos[oldName];
+    }
+    chrome.storage.sync.set({ lists: newLists, todos: newTodos, activeList: newName }, () => updateState());
+  };
+
+  document.getElementById('deleteList').onclick = () => {
+    const name = document.getElementById('listSelect').value;
+    if (!confirm(`Delete list "${name}"? This will remove its URLs and todos.`)) return;
+    const newLists = { ...state.lists };
+    delete newLists[name];
+    const newTodos = { ...(state.todos || {}) };
+    delete newTodos[name];
+    // pick a fallback active list
+    const remaining = Object.keys(newLists);
+    const nextActive = remaining.length ? remaining[0] : 'Default';
+    if (!newLists[nextActive]) newLists[nextActive] = [];
+    chrome.storage.sync.set({ lists: newLists, todos: newTodos, activeList: nextActive }, () => updateState());
+  };
+
+  // Add URL to list
+  document.getElementById('addListUrlButton').onclick = () => {
+    const raw = document.getElementById('newListUrl').value.trim();
+    if (!raw) return;
+    const host = normalizeDomain(raw);
+    if (!host) return alert('Invalid URL or domain');
+    const listName = document.getElementById('listSelect').value || state.activeList;
+    const newLists = { ...state.lists };
+    const entry = { url: host, requireChallenge: false };
+    newLists[listName] = (newLists[listName] || []).concat([entry]);
+    chrome.storage.sync.set({ lists: newLists }, () => { document.getElementById('newListUrl').value = ''; updateState(); });
   };
 
   // Tab switching

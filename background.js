@@ -35,6 +35,16 @@ chrome.storage.sync.get(
   ],
   (data) => {
     lists = data.lists || { Default: [] };
+      // Normalize lists entries: older format may be array of strings.
+      try {
+        Object.keys(lists).forEach((k) => {
+          if (Array.isArray(lists[k]) && lists[k].length && typeof lists[k][0] === 'string') {
+            lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false }));
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to normalize lists', e);
+      }
     todos = data.todos || { Default: [] };
     activeList = data.activeList || "Default";
     enabled = data.enabled !== false;
@@ -59,6 +69,14 @@ chrome.storage.sync.get(
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.todos) todos = changes.todos.newValue || { Default: [] };
   if (changes.lists) lists = changes.lists.newValue || { Default: [] };
+  // normalize on change as well
+  try {
+    Object.keys(lists).forEach((k) => {
+      if (Array.isArray(lists[k]) && lists[k].length && typeof lists[k][0] === 'string') {
+        lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false }));
+      }
+    });
+  } catch (e) {}
   if (changes.activeList) activeList = changes.activeList.newValue || "Default";
   if (changes.enabled) enabled = changes.enabled.newValue;
   if (changes.timerEnd) timerEnd = changes.timerEnd.newValue;
@@ -338,7 +356,8 @@ async function updateBlockRule() {
   const now = Date.now();
 
   // permanent whitelist
-  const baseWhitelist = lists[activeList] || [];
+  const baseListEntries = lists[activeList] || [];
+  const baseWhitelist = baseListEntries.map((entry) => (typeof entry === 'string' ? entry : entry.url));
 
   // temporary domains that are still valid
   const tempDomains = Object.entries(temporaryUnlocks)
