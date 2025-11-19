@@ -34,7 +34,6 @@
   <div class="top-nav">
     <button id="clockTab" class="nav-tab active">CLOCK</button>
     <button id="focusTab" class="nav-tab">FOCUS</button>
-    <button id="todoTab" class="nav-tab">TO‑DO</button>
     <button id="settingsTab" class="nav-tab">SETTINGS</button>
   </div>
 
@@ -51,7 +50,23 @@
         <p id="quoteText" class="quote-text">"Loading quote..."</p>
         <p id="quoteAuthor" class="quote-author">— Author</p>
       </div>
-      <ul id="todoList" class="todo-list2"  ></ul>
+      <div class="card todo-card">
+        <div class="card-header">
+          <div class="card-title">
+            To‑Do List for <span id="todoListName">Default</span>
+          </div>
+        </div>
+        <div class="todo-input-row">
+          <input
+            type="text"
+            id="newTodoInput"
+            class="text-input"
+            placeholder="Enter a task..."
+          />
+          <button id="addTodoButton" class="primary-btn">Add Task</button>
+        </div>
+        <ul id="todoList" class="todo-list2 todo-list"></ul>
+      </div>
     </section>
 
     <!-- FOCUS TAB -->
@@ -76,27 +91,6 @@
         <div class="card-title">ACTIVE WHITELIST:</div>
         <div class="whitelist-name" id="activeListName">Default</div>
         <ul id="domainList" class="whitelist-list"></ul>
-      </div>
-    </section>
-
-    <!-- TO‑DO TAB -->
-    <section id="todoDisplay" class="panel hidden">
-      <div class="card todo-card">
-        <div class="card-header">
-          <div class="card-title">
-            To‑Do List for <span id="todoListName">Default</span>
-          </div>
-        </div>
-        <div class="todo-input-row">
-          <input
-            type="text"
-            id="newTodoInput"
-            class="text-input"
-            placeholder="Enter a task..."
-          />
-          <button id="addTodoButton" class="primary-btn">Add Task</button>
-        </div>
-        <ul id="todoList" class="todo-list"></ul>
       </div>
     </section>
 

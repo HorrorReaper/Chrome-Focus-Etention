@@ -357,13 +357,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const tabs = {
     clock: document.getElementById("clockDisplay"),
     focus: document.querySelector(".timer-container"),
-    todo: document.getElementById("todoDisplay"),
     settings: document.getElementById("settingsPanel"),
   };
   const buttons = {
     clock: document.getElementById("clockTab"),
     focus: document.getElementById("focusTab"),
-    todo: document.getElementById("todoTab"),
     settings: document.getElementById("settingsTab"),
   };
 
@@ -392,7 +390,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   buttons.clock.onclick = () => switchTab("clock");
   buttons.focus.onclick = () => switchTab("focus");
-  buttons.todo.onclick = () => switchTab("todo");
   buttons.settings.onclick = () => switchTab("settings");
 
   switchTab("clock"); // default view
