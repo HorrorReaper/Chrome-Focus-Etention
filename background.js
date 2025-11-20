@@ -152,116 +152,125 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       pausedRemaining: null,
     });
   }
-  if (changes.temporaryUnlocks)
-  temporaryUnlocks = changes.temporaryUnlocks.newValue || {};
-
-
   chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "getState") {
-    sendResponse({
-      enabled,
-      timerEnd,
-      activeList,
-      lists,
-      todos,
-      pomodoroMode,
-      pomodoroWork,
-      pomodoroBreak,
-      pomodoroLongBreak,
-      currentCycle,
-      pomodoroCount,
-      paused,
-      pausedRemaining,
-    });
-  } else if (message.type === "startTimer") {
-    // fresh start -> clear pause
-    paused = false;
-    pausedRemaining = null;
-    chrome.storage.sync.set({ paused, pausedRemaining });
-
-    const minutes = message.minutes;
-    const isPomodoroStart = pomodoroMode && !enabled;
-    if (isPomodoroStart) {
-      pomodoroCount = 0;
-      currentCycle = 0;
-      chrome.storage.sync.set({ pomodoroCount, currentCycle });
+  try {
+    if (!message || !message.type) {
+      sendResponse({ success: false, error: 'invalid_message' });
+      return true;
     }
-    startTimer(minutes, true);
-    sendResponse({ success: true });
-  } else if (message.type === "pauseTimer") {
-    pauseTimer();
-    sendResponse({ success: true });
-  } else if (message.type === "unlockSite") {
-  const { domain, minutes } = message;
-  if (!domain || !minutes || minutes <= 0) {
-    sendResponse({ success: false });
+
+    if (message.type === "getState") {
+      sendResponse({
+        enabled,
+        timerEnd,
+        activeList,
+        lists,
+        todos,
+        pomodoroMode,
+        pomodoroWork,
+        pomodoroBreak,
+        pomodoroLongBreak,
+        currentCycle,
+        pomodoroCount,
+        paused,
+        pausedRemaining,
+        temporaryUnlocks,
+      });
+      return true;
+    }
+
+    if (message.type === "startTimer") {
+      paused = false;
+      pausedRemaining = null;
+      chrome.storage.sync.set({ paused, pausedRemaining });
+
+      const minutes = message.minutes;
+      const isPomodoroStart = pomodoroMode && !enabled;
+      if (isPomodoroStart) {
+        pomodoroCount = 0;
+        currentCycle = 0;
+        chrome.storage.sync.set({ pomodoroCount, currentCycle });
+      }
+      startTimer(minutes, true);
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (message.type === "pauseTimer") {
+      console.debug('[background] pauseTimer requested');
+      pauseTimer();
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (message.type === "resumeTimer") {
+      console.debug('[background] resumeTimer requested');
+      resumeTimer();
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (message.type === "stopTimer") {
+      stopTimer();
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (message.type === "unlockSite") {
+      const { domain, minutes } = message;
+      if (!domain || !minutes || minutes <= 0) {
+        sendResponse({ success: false });
+        return true;
+      }
+
+      const expireTs = Date.now() + minutes * 60000;
+      temporaryUnlocks[domain] = expireTs;
+
+      chrome.storage.sync.set({ temporaryUnlocks }, async () => {
+        try {
+          chrome.alarms.create("unlock:" + domain, { when: expireTs });
+        } catch (e) {
+          console.error('Failed to create unlock alarm for', domain, e);
+        }
+
+        try {
+          await updateBlockRule();
+          chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
+          sendResponse({ success: true });
+        } catch (err) {
+          console.error('Error applying block rules during unlock:', err);
+          sendResponse({ success: false });
+        }
+      });
+      return true; // keep sendResponse alive
+    }
+
+    if (message.type === "setPomodoro") {
+      pomodoroMode = message.mode;
+      pomodoroWork = message.work || pomodoroWork;
+      pomodoroBreak = message.break || pomodoroBreak;
+      pomodoroLongBreak = message.longBreak || pomodoroLongBreak;
+      chrome.storage.sync.set({
+        pomodoroMode,
+        pomodoroWork,
+        pomodoroBreak,
+        pomodoroLongBreak,
+      });
+      sendResponse({ success: true });
+      return true;
+    }
+
+    // Unknown message
+    sendResponse({ success: false, error: 'unknown_message' });
+    return true;
+  } catch (err) {
+    console.error('Error in onMessage handler', err);
+    try { sendResponse({ success: false, error: 'exception' }); } catch (e) {}
     return true;
   }
-
-  const expireTs = Date.now() + minutes * 60000;
-  temporaryUnlocks[domain] = expireTs;
-
-  chrome.storage.sync.set({ temporaryUnlocks }, async () => {
-    // create an alarm to remove it later
-    try {
-      chrome.alarms.create("unlock:" + domain, { when: expireTs });
-    } catch (e) {
-      console.error('Failed to create unlock alarm for', domain, e);
-    }
-
-    // Ensure block rules are updated before we respond so the blocked page
-    // can navigate back to the target URL without being immediately redirected again.
-    try {
-      await updateBlockRule();
-      chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => {});
-      sendResponse({ success: true });
-    } catch (err) {
-      console.error('Error applying block rules during unlock:', err);
-      sendResponse({ success: false });
-    }
-  });
-  return true;
-}else if (message.type === "resumeTimer") {
-    resumeTimer();
-    sendResponse({ success: true });
-  } else if (message.type === "stopTimer") {
-    // hard reset
-    stopTimer();
-    sendResponse({ success: true });
-  } else if (message.type === "updateTodo") {
-    const { action, index, value } = message;
-    let listTodos = todos[activeList] || [];
-    if (action === "add") {
-      listTodos.push({ text: value, done: false });
-    } else if (action === "toggle") {
-      listTodos[index].done = !listTodos[index].done;
-    } else if (action === "edit") {
-      listTodos[index].text = value;
-    } else if (action === "delete") {
-      listTodos.splice(index, 1);
-    }
-    todos[activeList] = listTodos;
-    chrome.storage.sync.set({ todos }, () => {
-      sendResponse({ success: true });
-    });
-    return true; // async
-  } else if (message.type === "setPomodoro") {
-    pomodoroMode = message.mode;
-    pomodoroWork = message.work || pomodoroWork;
-    pomodoroBreak = message.break || pomodoroBreak;
-    pomodoroLongBreak = message.longBreak || pomodoroLongBreak;
-    chrome.storage.sync.set({
-      pomodoroMode,
-      pomodoroWork,
-      pomodoroBreak,
-      pomodoroLongBreak,
-    });
-    sendResponse({ success: true });
-  }
-  return true;
 });
 
 function startTimer(minutes, enableBlocking) {
@@ -357,12 +366,30 @@ async function updateBlockRule() {
 
   // permanent whitelist
   const baseListEntries = lists[activeList] || [];
-  const baseWhitelist = baseListEntries.map((entry) => (typeof entry === 'string' ? entry : entry.url));
+  // normalize entries to hostnames (lowercase, strip leading www.)
+  const normalizeHost = (val) => {
+    try {
+      if (!val) return null;
+      // if it looks like a full URL, parse it; otherwise prepend scheme
+      const maybe = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(val) ? val : `https://${val}`;
+      const u = new URL(maybe);
+      return u.hostname.replace(/^www\./, '').toLowerCase();
+    } catch (e) {
+      // fallback: try simple cleanup
+      return String(val).replace(/^www\./, '').toLowerCase();
+    }
+  };
+
+  const baseWhitelist = baseListEntries
+    .map((entry) => (typeof entry === 'string' ? entry : entry.url))
+    .map((v) => normalizeHost(v))
+    .filter(Boolean);
 
   // temporary domains that are still valid
   const tempDomains = Object.entries(temporaryUnlocks)
     .filter(([_, ts]) => ts > now)
-    .map(([domain]) => domain);
+    .map(([domain]) => normalizeHost(domain) || domain)
+    .filter(Boolean);
 
   // also clean up expired from memory
   const stillValid = {};

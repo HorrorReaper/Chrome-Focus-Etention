@@ -290,21 +290,24 @@ document.getElementById('add-whitelist').onclick = () => {
   
   try {
     const url = new URL(blockedUrl);
-    const domain = url.hostname;
-    
+    // normalize domain (strip www)
+    const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+
     chrome.storage.sync.get(['lists', 'activeList'], (data) => {
       const lists = data.lists || {};
       const activeList = data.activeList || 'Default';
-      
-      if (!lists[activeList]) {
-        lists[activeList] = [];
-      }
-      
-      if (!lists[activeList].includes(domain)) {
-        lists[activeList].push(domain);
+
+      if (!lists[activeList]) lists[activeList] = [];
+
+      // Check for presence whether entries are strings or objects
+      const already = lists[activeList].some((e) => (typeof e === 'string' ? e : e.url) === domain);
+      if (!already) {
+        // add in new object format
+        lists[activeList].push({ url: domain, requireChallenge: false });
         chrome.storage.sync.set({ lists }, () => {
           alert(`${domain} has been added to your whitelist!`);
-          window.location.href = blockedUrl;
+          // Wait briefly to give background a chance to update dynamic rules
+          setTimeout(() => { window.location.href = blockedUrl; }, 800);
         });
       } else {
         alert(`${domain} is already whitelisted!`);
@@ -423,8 +426,26 @@ if (unlockBtn) {
         const tmp = data.temporaryUnlocks || {};
         tmp[blockedDomain] = expireTs;
         chrome.storage.sync.set({ temporaryUnlocks: tmp }, () => {
-          // give the background a moment to pick up the change
-          setTimeout(() => { window.location.href = blockedFullUrl; }, 300);
+          // Poll storage until background picks up the change (or timeout)
+          const start = Date.now();
+          const maxWait = 5000; // ms
+          const interval = 200;
+          const check = () => {
+            chrome.storage.sync.get(["temporaryUnlocks"], (d2) => {
+              const nowTmp = (d2.temporaryUnlocks || {})[blockedDomain];
+              if (nowTmp && nowTmp >= expireTs) {
+                window.location.href = blockedFullUrl;
+                return;
+              }
+              if (Date.now() - start >= maxWait) {
+                // give one last try and navigate anyway
+                window.location.href = blockedFullUrl;
+                return;
+              }
+              setTimeout(check, interval);
+            });
+          };
+          setTimeout(check, 150);
         });
       });
     };
