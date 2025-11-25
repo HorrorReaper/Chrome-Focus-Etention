@@ -5,14 +5,31 @@ import { updateClock } from "./lib/clock.js";
 import { addToDo, updateTodoList } from "./lib/todo.js";
 import { applyBackgroundFromSettings } from "./lib/appearance.js";
 import { saveSettings } from "./lib/settings.js";
+import { renderFavList, renderFavorites, addFavorite } from "./lib/favorites.js";
+console.log('[newtab] module loaded');
+window.addEventListener('error', (e) => {
+  try { console.error('[newtab] window.error', e && (e.error || e.message || e)); } catch(_){}
+});
+window.addEventListener('unhandledrejection', (e) => {
+  try { console.error('[newtab] unhandledrejection', e && (e.reason || e)); } catch(_){}
+});
 let interval;
 let state = {
   enabled: false,
   timerEnd: null,
   activeList: "Default",
   lists: {
-  Default: []
-},
+    Default: [
+      { domain: "youtube.com", challengeRequired: false }
+    ]
+  },
+  favorites: {
+    Default: [
+      { url: "https://github.com", title: "GitHub", icon: "🔧" },
+      { url: "https://stackoverflow.com", title: "Stack Overflow", icon: "📚" }
+    ]
+  },
+
 
   todos: { Default: [] },
   pomodoroMode: false,
@@ -170,7 +187,9 @@ chrome.storage.sync.get(["enableMathChallenge"], (data) => {
     ? `— ${randomQuote.author}`
     : "";
     
-}
+renderFavorites(state);
+renderFavList(state);
+  }
 
 
 
@@ -229,6 +248,50 @@ document.addEventListener("DOMContentLoaded", () => {
       updateState();
     });
   };
+  document.getElementById("addFavButton").onclick = () => {
+    console.log('Add Favorite button clicked');
+    alert('Add Favorite button clicked');
+  const urlInput = document.getElementById("newFavUrl");
+  const titleInput = document.getElementById("newFavTitle");
+  const iconInput = document.getElementById("newFavIcon");
+
+  let url = urlInput.value.trim();
+  const title = titleInput.value.trim();
+  const icon = iconInput.value.trim();
+
+  if (!url) {
+    alert("Please enter a URL.");
+    return;
+  }
+
+  // Accept plain hostnames by adding https:// if missing, then validate
+  let candidate = url;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) candidate = 'https://' + candidate;
+  try {
+    const parsed = new URL(candidate);
+    // use the normalized candidate URL
+    url = parsed.href;
+  } catch (e) {
+    alert("Please enter a valid URL (e.g. example.com or https://example.com)");
+    return;
+  }
+
+  addFavorite(state, url, title || new URL(url).hostname, icon || "🔖");
+
+  urlInput.value = "";
+  titleInput.value = "";
+  iconInput.value = "";
+};
+
+document.getElementById("newFavUrl").onkeypress = (e) => {
+  if (e.key === "Enter") {
+    document.getElementById("addFavButton").click();
+  }
+};
+
+
+
+
 
   // Configure button toggles the list editor panel
   const cfgBtn = document.getElementById('configureListButton');
@@ -247,11 +310,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // List management controls
   document.getElementById('createList').onclick = () => {
-    const name = document.getElementById('newListName').value.trim();
-    if (!name) return alert('Please enter a list name');
-    if (state.lists[name]) return alert('List already exists');
-    const newLists = { ...state.lists, [name]: [] };
-    chrome.storage.sync.set({ lists: newLists, activeList: name }, () => updateState());
+    const input = document.getElementById('newListName');
+    const name = input ? input.value.trim() : '';
+    if (!name) {
+      alert('Please enter a list name.');
+      if (input) input.focus();
+      return;
+    }
+    if (state.lists && state.lists[name]) {
+      alert('A list with this name already exists.');
+      return;
+    }
+
+    // Prepare new objects for storage to avoid mutating in-memory state directly
+    const newLists = { ...(state.lists || {}), [name]: [] };
+    const newTodos = { ...(state.todos || {}), [name]: [] };
+    const newFavorites = { ...(state.favorites || {}), [name]: [] };
+
+    chrome.storage.sync.set(
+      {
+        lists: newLists,
+        todos: newTodos,
+        favorites: newFavorites,
+        activeList: name,
+      },
+      () => {
+        if (input) input.value = '';
+        updateState();
+      }
+    );
   };
 
   document.getElementById('renameList').onclick = () => {
@@ -271,17 +358,41 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   document.getElementById('deleteList').onclick = () => {
-    const name = document.getElementById('listSelect').value;
-    if (!confirm(`Delete list "${name}"? This will remove its URLs and todos.`)) return;
-    const newLists = { ...state.lists };
-    delete newLists[name];
+    // Prefer the selected list in the UI; fall back to state.activeList
+    const select = document.getElementById('listSelect');
+    const selectedName = select ? select.value : null;
+    const name = selectedName || state.activeList || 'Default';
+
+    if (name === 'Default') {
+      alert('Cannot delete the Default list.');
+      return;
+    }
+
+    if (!confirm(`Delete list "${name}"? This will remove its URLs, todos and favorites.`)) return;
+
+    // Build new copies instead of mutating `state` in-place
+    const newLists = { ...(state.lists || {}) };
     const newTodos = { ...(state.todos || {}) };
+    const newFavorites = { ...(state.favorites || {}) };
+
+    delete newLists[name];
     delete newTodos[name];
-    // pick a fallback active list
+    delete newFavorites[name];
+
+    // Pick a fallback active list
     const remaining = Object.keys(newLists);
     const nextActive = remaining.length ? remaining[0] : 'Default';
     if (!newLists[nextActive]) newLists[nextActive] = [];
-    chrome.storage.sync.set({ lists: newLists, todos: newTodos, activeList: nextActive }, () => updateState());
+
+    chrome.storage.sync.set(
+      {
+        lists: newLists,
+        todos: newTodos,
+        favorites: newFavorites,
+        activeList: nextActive,
+      },
+      () => updateState()
+    );
   };
 
   // Add URL to list

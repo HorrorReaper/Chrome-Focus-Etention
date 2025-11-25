@@ -92,6 +92,61 @@
         <div class="whitelist-name" id="activeListName">Default</div>
         <ul id="domainList" class="whitelist-list"></ul>
       </div>
+      <!-- URL Management -->
+<div class="settings-section">
+  <h3 class="section-title">URLs in "<span id="currentListName"></span>"</h3>
+
+  <div class="settings-row" style="gap: 8px;">
+    <input
+      type="text"
+      id="newUrlInput"
+      class="text-input"
+      placeholder="example.com"
+      style="flex: 1;"
+    />
+    <button id="addUrlButton" class="primary-btn">Add URL</button>
+  </div>
+
+  <ul id="urlList" class="url-list">
+    <!-- Populated by JS -->
+  </ul>
+</div>
+
+<!-- NEW: Favorites Management -->
+<div class="settings-section">
+  <h3 class="section-title">Favorites in "<span id="currentFavListName"></span>"</h3>
+
+  <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
+    <input
+      type="text"
+      id="newFavUrl"
+      class="text-input"
+      placeholder="https://example.com"
+      style="flex: 1; min-width: 200px;"
+    />
+    <input
+      type="text"
+      id="newFavTitle"
+      class="text-input"
+      placeholder="Title"
+      style="width: 150px;"
+    />
+    <input
+      type="text"
+      id="newFavIcon"
+      class="text-input"
+      placeholder="🔖"
+      style="width: 60px; text-align: center;"
+      maxlength="2"
+    />
+    <button id="addFavButton" class="primary-btn">Add Favorite</button>
+  </div>
+
+  <ul id="favList" class="fav-list">
+    <!-- Populated by JS -->
+  </ul>
+</div>
+
     </section>
 
     <!-- SETTINGS TAB -->
@@ -111,7 +166,7 @@
           <label class="settings-label">Manage Lists</label>
           <div class="list-controls">
             <input type="text" id="newListName" class="text-input" placeholder="New list name" />
-            <button id="createList" class="secondary-btn">Create</button>
+            <button id="createList" class="secondary-btn createListButton">Create</button>
             <button id="renameList" class="secondary-btn">Rename</button>
             <button id="deleteList" class="warn-btn">Delete</button>
           </div>
@@ -212,6 +267,60 @@
   </label>
   <input type="checkbox" id="enableMathChallenge" />
 </div>
+<!-- URL Management -->
+<div class="settings-section">
+
+  <div class="settings-row" style="gap: 8px;">
+    <input
+      type="text"
+      id="newUrlInput"
+      class="text-input"
+      placeholder="example.com"
+      style="flex: 1;"
+    />
+    <button id="addUrlButton" class="primary-btn">Add URL</button>
+  </div>
+
+  <ul id="urlList" class="url-list">
+    <!-- Populated by JS -->
+  </ul>
+</div>
+
+<!-- NEW: Favorites Management -->
+<div class="settings-section">
+  <h3 class="section-title">Favorites</h3>
+
+  <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
+    <input
+      type="text"
+      id="newFavUrl"
+      class="text-input"
+      placeholder="https://example.com"
+      style="flex: 1; min-width: 200px;"
+    />
+    <input
+      type="text"
+      id="newFavTitle"
+      class="text-input"
+      placeholder="Title"
+      style="width: 150px;"
+    />
+    <input
+      type="text"
+      id="newFavIcon"
+      class="text-input"
+      placeholder="🔖"
+      style="width: 60px; text-align: center;"
+      maxlength="2"
+    />
+    <button id="addFavButton" class="primary-btn">Add Favorite</button>
+  </div>
+
+  <ul id="favList" class="fav-list">
+    <!-- Populated by JS -->
+  </ul>
+</div>
+
 
 
         <button id="saveSettings" class="primary-btn full-width">
