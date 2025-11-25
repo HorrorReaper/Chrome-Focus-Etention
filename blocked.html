@@ -176,6 +176,43 @@
       padding-inline: 12px;
     }
 
+    /* Reason / Typing / Delay inputs should match math challenge styling */
+    .challenge-row textarea,
+    .challenge-row input[type="text"],
+    .challenge-row input[type="number"] {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .challenge-row textarea {
+      min-height: 84px;
+      resize: vertical;
+      width: 100%;
+    }
+
+    #typingQuote {
+      font-size: 14px;
+      color: #f8f8f8;
+      background: rgba(255,255,255,0.02);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px dashed rgba(255,255,255,0.06);
+      margin-top: 6px;
+    }
+
+    #delayTimerLabel {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 6px;
+    }
+
     /* Unlock button row */
 
     .blocked-actions-main {
@@ -335,6 +372,9 @@
         <div class="blocked-actions-secondary">
           <button class="primary-btn" id="add-whitelist">
             ✓ Allow This Site
+          </button>
+          <button class="primary-btn" id="add-favorite">
+            ★ Add to Favorites
           </button>
           <a href="chrome://newtab" class="secondary-link">
             ← Back to Focus

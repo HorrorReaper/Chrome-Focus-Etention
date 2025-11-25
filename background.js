@@ -1,8 +1,9 @@
 let lists = { "Default": [] };
-let todos = { "Default": [] }; // { listName: [{text, done}] }
+let todos = { "Default": [] }; 
 let activeList = "Default";
 let enabled = false;
 let timerEnd = null;
+let enableMathChallenge = false; // global default for unspecified domains
 let pomodoroMode = false;
 let pomodoroWork = 25;
 let pomodoroBreak = 5;
@@ -19,6 +20,7 @@ let pausedRemaining = null; // ms
 chrome.storage.sync.get(
   [
     "lists",
+    "enableMathChallenge",
     "todos",
     "activeList",
     "enabled",
@@ -38,14 +40,35 @@ chrome.storage.sync.get(
       // Normalize lists entries: older format may be array of strings.
       try {
         Object.keys(lists).forEach((k) => {
-          if (Array.isArray(lists[k]) && lists[k].length && typeof lists[k][0] === 'string') {
-            lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false }));
+          if (!Array.isArray(lists[k])) {
+            lists[k] = [];
+            return;
+          }
+          // legacy array of strings -> convert
+          if (lists[k].length && typeof lists[k][0] === 'string') {
+            lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false, challengeType: 'none' }));
+          } else {
+            // normalize object entries: prefer explicit challengeType, else map requireChallenge/challengeRequired to 'math'
+            lists[k] = lists[k].map((d) => {
+              if (!d) return null;
+              if (typeof d === 'string') return { url: d, requireChallenge: false, challengeType: 'none' };
+              const url = d.url || d.domain || '';
+              const req = !!(d.requireChallenge || d.challengeRequired);
+              const challengeType = d.challengeType || (req ? 'math' : (enableMathChallenge ? 'math' : 'none'));
+              const challengeIntensity = d.challengeIntensity || d.intensity || undefined;
+              const out = { url, requireChallenge: req, challengeType };
+              if (challengeIntensity) out.challengeIntensity = challengeIntensity;
+              return out;
+            }).filter(Boolean);
           }
         });
+        // persist normalized lists so rest of code sees canonical format
+        chrome.storage.sync.set({ lists });
       } catch (e) {
         console.warn('Failed to normalize lists', e);
       }
     todos = data.todos || { Default: [] };
+    enableMathChallenge = !!data.enableMathChallenge;
     activeList = data.activeList || "Default";
     enabled = data.enabled !== false;
     timerEnd = data.timerEnd;
@@ -69,11 +92,28 @@ chrome.storage.sync.get(
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.todos) todos = changes.todos.newValue || { Default: [] };
   if (changes.lists) lists = changes.lists.newValue || { Default: [] };
+  if (changes.enableMathChallenge) enableMathChallenge = !!changes.enableMathChallenge.newValue;
   // normalize on change as well
   try {
     Object.keys(lists).forEach((k) => {
-      if (Array.isArray(lists[k]) && lists[k].length && typeof lists[k][0] === 'string') {
-        lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false }));
+      if (!Array.isArray(lists[k])) {
+        lists[k] = [];
+        return;
+      }
+      if (lists[k].length && typeof lists[k][0] === 'string') {
+        lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false, challengeType: 'none' }));
+      } else {
+        lists[k] = lists[k].map((d) => {
+          if (!d) return null;
+          if (typeof d === 'string') return { url: d, requireChallenge: false, challengeType: 'none' };
+          const url = d.url || d.domain || '';
+          const req = !!(d.requireChallenge || d.challengeRequired);
+          const challengeType = d.challengeType || (req ? 'math' : (enableMathChallenge ? 'math' : 'none'));
+          const challengeIntensity = d.challengeIntensity || d.intensity || undefined;
+          const out = { url, requireChallenge: req, challengeType };
+          if (challengeIntensity) out.challengeIntensity = challengeIntensity;
+          return out;
+        }).filter(Boolean);
       }
     });
   } catch (e) {}

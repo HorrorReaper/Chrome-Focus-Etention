@@ -20,7 +20,7 @@ let state = {
   activeList: "Default",
   lists: {
     Default: [
-      { domain: "youtube.com", challengeRequired: false }
+      { url: "youtube.com", requireChallenge: false }
     ]
   },
   favorites: {
@@ -75,28 +75,85 @@ function renderListEditor() {
   const entries = (state.lists && state.lists[state.activeList]) || [];
   entries.forEach((entry, idx) => {
     const url = (entry && (entry.url || entry.domain)) || String(entry || '');
-    const requireFlag = entry && (entry.requireChallenge || entry.requireChallenge === true || entry.challengeRequired || false);
+    const requireFlag = entry && (entry.requireChallenge || entry.requireChallenge === true || entry.challengeRequired || (entry.challengeType && entry.challengeType !== 'none')) || false;
     const li = document.createElement('li');
     li.className = 'whitelist-item';
 
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!requireFlag;
-    cb.dataset.index = idx;
-    cb.onchange = (e) => {
+    // Replace legacy checkbox with a challenge-type select (None/Math/Reason/Delay/Typing)
+
+    const span = document.createElement('span');
+    span.textContent = url;
+    span.className = 'whitelist-url';
+
+    // show star if this domain is also in favorites for the active list
+    try {
+      const favs = (state.favorites && state.favorites[state.activeList]) || [];
+      const domainHost = normalizeDomain(url) || url;
+      const isFav = favs.some(f => {
+        try {
+          const fu = new URL((f && f.url) || '');
+          const fh = fu.hostname.replace(/^www\./, '').toLowerCase();
+          return fh === domainHost;
+        } catch (e) {
+          return ((f && (f.url || f.domain)) || '').replace(/^www\./, '').toLowerCase() === domainHost;
+        }
+      });
+      if (isFav) {
+        const star = document.createElement('span');
+        star.className = 'fav-indicator';
+        star.textContent = ' ⭐';
+        star.title = 'Also in favorites';
+        span.appendChild(star);
+      }
+    } catch (e) {}
+
+    // Challenge type selector
+    const typeSel = document.createElement('select');
+    const curType = entry && entry.challengeType ? entry.challengeType : (entry && (entry.requireChallenge || entry.challengeRequired) ? 'math' : 'none');
+    ['none', 'math', 'reason', 'delay', 'typing'].forEach((t) => {
+      const o = document.createElement('option');
+      o.value = t;
+      // show capitalized labels
+      o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      if (t === curType) o.selected = true;
+      typeSel.appendChild(o);
+    });
+    typeSel.dataset.index = idx;
+    typeSel.onchange = (e) => {
       const i = Number(e.target.dataset.index);
       const listName = document.getElementById('listSelect').value || state.activeList;
       const newLists = { ...state.lists };
       const arr = (newLists[listName] || []).slice();
       arr[i] = arr[i] || {};
-      arr[i].requireChallenge = !!e.target.checked;
+      const val = e.target.value;
+      arr[i].challengeType = val;
+      // keep backward-compatible boolean for other code
+      arr[i].requireChallenge = val !== 'none';
       newLists[listName] = arr;
       chrome.storage.sync.set({ lists: newLists }, () => updateState());
     };
 
-    const span = document.createElement('span');
-    span.textContent = url;
-    span.className = 'whitelist-url';
+    // Challenge intensity selector
+    const intensitySel = document.createElement('select');
+    ['easy', 'medium', 'hard'].forEach((lvl) => {
+      const o = document.createElement('option');
+      o.value = lvl;
+      o.textContent = lvl;
+      const curIntensity = entry && (entry.challengeIntensity || entry.intensity) ? (entry.challengeIntensity || entry.intensity) : 'medium';
+      if (lvl === curIntensity) o.selected = true;
+      intensitySel.appendChild(o);
+    });
+    intensitySel.dataset.index = idx;
+    intensitySel.onchange = (e) => {
+      const i = Number(e.target.dataset.index);
+      const listName = document.getElementById('listSelect').value || state.activeList;
+      const newLists = { ...state.lists };
+      const arr = (newLists[listName] || []).slice();
+      arr[i] = arr[i] || {};
+      arr[i].challengeIntensity = e.target.value;
+      newLists[listName] = arr;
+      chrome.storage.sync.set({ lists: newLists }, () => updateState());
+    };
 
     const del = document.createElement('button');
     del.textContent = 'Remove';
@@ -112,7 +169,13 @@ function renderListEditor() {
       chrome.storage.sync.set({ lists: newLists }, () => updateState());
     };
 
-    li.append(cb, span, del);
+    // Hide intensity if no challenge
+    if (curType === 'none') intensitySel.style.display = 'none';
+    typeSel.addEventListener('change', (e) => {
+      intensitySel.style.display = e.target.value === 'none' ? 'none' : '';
+    });
+
+    li.append(span, typeSel, intensitySel, del);
     container.appendChild(li);
   });
 }
@@ -125,7 +188,24 @@ function updateUI() {
   (state.lists[state.activeList] || []).forEach((domain) => {
     const li = document.createElement("li");
     const url = typeof domain === 'string' ? domain : (domain.url || domain.domain || '');
-    li.textContent = url;
+    const urlSpan = document.createElement('span');
+    urlSpan.textContent = url;
+    urlSpan.className = 'domain-url';
+
+    // show a subtle icon indicating challenge type (if any)
+    const type = (typeof domain === 'string') ? 'none' : (domain.challengeType || (domain.requireChallenge ? 'math' : 'none'));
+    const icons = { none: '', math: '🧮', reason: '💡', delay: '⏳', typing: '⌨️' };
+    const icon = icons[type] || '';
+    if (icon) {
+      const ind = document.createElement('span');
+      ind.className = 'challenge-indicator';
+      ind.textContent = icon;
+      ind.style.marginLeft = '8px';
+      ind.title = type.charAt(0).toUpperCase() + type.slice(1) + ' challenge';
+      li.append(urlSpan, ind);
+    } else {
+      li.append(urlSpan);
+    }
     domainList.appendChild(li);
   });
 
@@ -289,6 +369,31 @@ document.getElementById("newFavUrl").onkeypress = (e) => {
   }
 };
 
+  // Star current site button (focus page)
+  const starBtn = document.getElementById('starCurrentSite');
+  if (starBtn) {
+    starBtn.onclick = () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs || !tabs[0] || !tabs[0].url) return;
+        let tabUrl = tabs[0].url;
+        if (tabUrl.startsWith(chrome.runtime.getURL(''))) {
+          const params = new URLSearchParams(new URL(tabUrl).search);
+          const original = params.get('url');
+          if (original) tabUrl = original;
+        }
+        try {
+          const parsed = new URL(tabUrl);
+          const normalized = parsed.href;
+          const hostname = parsed.hostname.replace(/^www\./, '');
+          addFavorite(state, normalized, hostname, '⭐');
+        } catch (e) {
+          console.warn('Could not parse current tab URL for favorite', e);
+          alert('Cannot add this site to favorites.');
+        }
+      });
+    };
+  }
+
 
 
 
@@ -403,7 +508,7 @@ document.getElementById("newFavUrl").onkeypress = (e) => {
     if (!host) return alert('Invalid URL or domain');
     const listName = document.getElementById('listSelect').value || state.activeList;
     const newLists = { ...state.lists };
-    const entry = { url: host, requireChallenge: false };
+    const entry = { url: host, requireChallenge: false, challengeType: 'none' };
     newLists[listName] = (newLists[listName] || []).concat([entry]);
     chrome.storage.sync.set({ lists: newLists }, () => { document.getElementById('newListUrl').value = ''; updateState(); });
   };

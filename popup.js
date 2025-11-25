@@ -18,6 +18,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadData() {
     chrome.storage.sync.get(['lists', 'activeList', 'enabled', 'timerEnd'], (data) => {
       lists = data.lists || { "Default": [] };
+      // Normalize lists entries to canonical format: { url, requireChallenge, challengeType }
+      try {
+        Object.keys(lists).forEach((k) => {
+          if (!Array.isArray(lists[k])) {
+            lists[k] = [];
+            return;
+          }
+          if (lists[k].length && typeof lists[k][0] === 'string') {
+            lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false, challengeType: 'none' }));
+          } else {
+            lists[k] = lists[k].map((d) => {
+              if (!d) return null;
+              if (typeof d === 'string') return { url: d, requireChallenge: false, challengeType: 'none' };
+              const url = d.url || d.domain || '';
+              const req = !!(d.requireChallenge || d.challengeRequired);
+              const challengeType = d.challengeType || (req ? 'math' : 'none');
+              const challengeIntensity = d.challengeIntensity || d.intensity || undefined;
+              const out = { url, requireChallenge: req, challengeType };
+              if (challengeIntensity) out.challengeIntensity = challengeIntensity;
+              return out;
+            }).filter(Boolean);
+          }
+        });
+        // Persist normalization back to storage so other parts see canonical format
+        chrome.storage.sync.set({ lists });
+      } catch (e) {
+        console.warn('Failed to normalize lists in popup:', e);
+      }
       activeList = data.activeList || "Default";
       enableToggle.checked = data.enabled !== false;
 
@@ -94,14 +122,77 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadWhitelist() {
     const whitelist = lists[activeList] || [];
     whitelistList.innerHTML = '';
-    whitelist.forEach((site) => {
+    whitelist.forEach((entry, idx) => {
+      const url = (entry && (entry.url || entry.domain)) || '';
+      const requireChallenge = !!(entry && entry.requireChallenge);
+      const challengeType = (entry && entry.challengeType) || (requireChallenge ? 'math' : 'none');
+      const challengeIntensity = (entry && entry.challengeIntensity) || 'medium';
+
       const li = document.createElement('li');
-      li.textContent = site;
+
+      const text = document.createElement('span');
+      text.textContent = url;
+      text.className = 'whitelist-url';
+      li.appendChild(text);
+
+      // Challenge type selector
+      const typeSel = document.createElement('select');
+      ['none', 'math', 'reason', 'delay', 'typing'].forEach((t) => {
+        const o = document.createElement('option');
+        o.value = t;
+        o.textContent = t;
+        if (t === challengeType) o.selected = true;
+        typeSel.appendChild(o);
+      });
+      typeSel.dataset.index = idx;
+      typeSel.onchange = (e) => {
+        const i = Number(e.target.dataset.index);
+        const val = e.target.value;
+        const arr = lists[activeList] || [];
+        arr[i] = arr[i] || {};
+        arr[i].challengeType = val;
+        arr[i].requireChallenge = val !== 'none';
+        lists[activeList] = arr;
+        chrome.storage.sync.set({ lists }, () => loadWhitelist());
+      };
+      typeSel.className = 'sel-challenge-type';
+      li.appendChild(typeSel);
+
+      // Challenge intensity selector (only relevant when challengeType != 'none')
+      const intensitySel = document.createElement('select');
+      ['easy', 'medium', 'hard'].forEach((lvl) => {
+        const o = document.createElement('option');
+        o.value = lvl;
+        o.textContent = lvl;
+        if (lvl === challengeIntensity) o.selected = true;
+        intensitySel.appendChild(o);
+      });
+      intensitySel.dataset.index = idx;
+      intensitySel.onchange = (e) => {
+        const i = Number(e.target.dataset.index);
+        const val = e.target.value;
+        const arr = lists[activeList] || [];
+        arr[i] = arr[i] || {};
+        arr[i].challengeIntensity = val;
+        lists[activeList] = arr;
+        chrome.storage.sync.set({ lists });
+      };
+      intensitySel.className = 'sel-challenge-intensity';
+      intensitySel.style.marginLeft = '6px';
+      if (challengeType === 'none') intensitySel.style.display = 'none';
+      li.appendChild(intensitySel);
+
+      // Ensure intensity visibility toggles when type changes
+      typeSel.addEventListener('change', (e) => {
+        intensitySel.style.display = e.target.value === 'none' ? 'none' : '';
+      });
+
       const remove = document.createElement('span');
       remove.textContent = ' [Remove]';
       remove.className = 'remove';
-      remove.onclick = () => removeSite(site);
+      remove.onclick = () => removeSite(url);
       li.appendChild(remove);
+
       whitelistList.appendChild(li);
     });
   }
@@ -139,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Helper to add domain if not already in current list
   function addToWhitelist(domain) {
     let whitelist = lists[activeList] || [];
-    if (!whitelist.includes(domain)) {
-      whitelist.push(domain);
+    if (!whitelist.some(e => (e && e.url) === domain)) {
+      whitelist.push({ url: domain, requireChallenge: false, challengeType: 'none' });
       lists[activeList] = whitelist;
       chrome.storage.sync.set({ lists });
       loadWhitelist();
@@ -150,7 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Remove site
   function removeSite(site) {
     let whitelist = lists[activeList] || [];
-    whitelist = whitelist.filter(s => s !== site);
+    // site may be a url string; remove matching entries by url
+    whitelist = whitelist.filter(s => !s || s.url !== site);
     lists[activeList] = whitelist;
     chrome.storage.sync.set({ lists });
     loadWhitelist();

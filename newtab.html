@@ -6,7 +6,7 @@
   <title>Focus Startpage</title>
   <link rel="stylesheet" href="newtab.css" />
 </head>
-<body>
+<body style="overflow-y: scroll;">
   <!-- Background + overlay handled in CSS -->
    <div id="ytBackground" class="yt-bg hidden"></div>
 
@@ -91,6 +91,9 @@
         <div class="card-title">ACTIVE WHITELIST:</div>
         <div class="whitelist-name" id="activeListName">Default</div>
         <ul id="domainList" class="whitelist-list"></ul>
+      </div>
+      <div style="margin-top:10px;">
+        <button id="starCurrentSite" class="secondary-btn">⭐ Star current site</button>
       </div>
       <!-- URL Management -->
 <div class="settings-section">

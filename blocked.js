@@ -13,8 +13,13 @@ const motivationalQuotes = [
 
 let blockedDomain = null;
 let blockedFullUrl = null;
-let currentAnswer = null;
-let mathChallengeEnabled = false;
+let currentAnswer = null; // for math
+let mathChallengeEnabled = false; // legacy global default
+let currentChallengeType = 'none';
+let currentChallengeEntry = null; // store list entry for intensity etc
+let typingQuote = null;
+let delayInterval = null;
+let delayRemaining = 0;
 
 chrome.storage.sync.get(["enableMathChallenge"], (data) => {
   mathChallengeEnabled = !!data.enableMathChallenge;
@@ -302,8 +307,8 @@ document.getElementById('add-whitelist').onclick = () => {
       // Check for presence whether entries are strings or objects
       const already = lists[activeList].some((e) => (typeof e === 'string' ? e : e.url) === domain);
       if (!already) {
-        // add in new object format
-        lists[activeList].push({ url: domain, requireChallenge: false });
+        // add in new object format, include challengeType for the new data model
+        lists[activeList].push({ url: domain, requireChallenge: false, challengeType: 'none' });
         chrome.storage.sync.set({ lists }, () => {
           alert(`${domain} has been added to your whitelist!`);
           // Wait briefly to give background a chance to update dynamic rules
@@ -317,6 +322,37 @@ document.getElementById('add-whitelist').onclick = () => {
     alert('Could not add this URL to whitelist');
   }
 };
+
+// Add to favorites button on blocked page
+const addFavBtn = document.getElementById('add-favorite');
+if (addFavBtn) {
+  addFavBtn.onclick = () => {
+    if (!blockedFullUrl) return;
+    try {
+      const parsed = new URL(blockedFullUrl);
+      const normalized = parsed.href;
+      const hostname = parsed.hostname.replace(/^www\./, '');
+
+      chrome.storage.sync.get(['favorites','activeList'], (data) => {
+        const favorites = data.favorites || {};
+        const activeList = data.activeList || 'Default';
+        if (!favorites[activeList]) favorites[activeList] = [];
+
+        const exists = favorites[activeList].some(f => (f && (f.url || '').replace(/\/\/$/, '') === normalized || (f.url || '').includes(hostname)));
+        if (!exists) {
+          favorites[activeList].push({ url: normalized, title: hostname, icon: '⭐' });
+          chrome.storage.sync.set({ favorites }, () => {
+            alert(`${hostname} added to favorites.`);
+          });
+        } else {
+          alert(`${hostname} is already in favorites.`);
+        }
+      });
+    } catch (e) {
+      alert('Could not add to favorites');
+    }
+  };
+}
 
 // Initial load
 loadState();
@@ -343,26 +379,205 @@ chrome.runtime.onMessage.addListener((msg) => {
   } catch (e) {
     blockedDomain = null;
   }
+  // After determining blocked domain, render proper challenge UI
+  initChallengeUI();
 })();
+
+function normalizeHost(val) {
+  try {
+    if (!val) return null;
+    const maybe = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(val) ? val : `https://${val}`;
+    const u = new URL(maybe);
+    return u.hostname.replace(/^www\./, '').toLowerCase();
+  } catch (e) {
+    return String(val).replace(/^www\./, '').toLowerCase();
+  }
+}
 
 function initChallengeUI() {
   const container = document.getElementById("challengeContainer");
   if (!container) return;
 
-  if (!mathChallengeEnabled) {
-    // hide if disabled in settings
-    container.style.display = "none";
+  // Reset any previous state
+  clearDelayInterval();
+  container.style.display = '';
+
+  // Determine challenge type for this blocked domain by reading storage lists
+  chrome.storage.sync.get(['lists','activeList','enableMathChallenge'], (data) => {
+    const lists = data.lists || {};
+    const activeList = data.activeList || 'Default';
+    mathChallengeEnabled = !!data.enableMathChallenge;
+
+    let entry = null;
+    const arr = Array.isArray(lists[activeList]) ? lists[activeList] : [];
+    const host = blockedDomain;
+    if (host) {
+      for (const e of arr) {
+        const candidate = typeof e === 'string' ? e : (e.url || e.domain || '');
+        if (!candidate) continue;
+        if (normalizeHost(candidate) === host) {
+          entry = e;
+          break;
+        }
+      }
+    }
+
+    currentChallengeEntry = entry;
+    currentChallengeType = entry && entry.challengeType ? entry.challengeType : (entry && (entry.requireChallenge || entry.challengeRequired) ? 'math' : (mathChallengeEnabled ? 'math' : 'none'));
+
+    renderChallengeUI(currentChallengeType, entry);
+  });
+}
+
+function clearDelayInterval() {
+  if (delayInterval) {
+    clearInterval(delayInterval);
+    delayInterval = null;
+  }
+  delayRemaining = 0;
+}
+
+function renderChallengeUI(type, entry) {
+  const container = document.getElementById('challengeContainer');
+  const unlockBtn = document.getElementById('unlockButton');
+  if (!container) return;
+
+  // sanitize: ensure visible
+  container.style.display = '';
+
+  // Build UI per type
+  container.innerHTML = '';
+
+  if (type === 'none') {
+    // No challenge; hide container
+    container.style.display = 'none';
+    if (unlockBtn) unlockBtn.disabled = false;
     return;
   }
 
-  container.style.display = "flex";
-  generateChallenge();
-  // focus input for convenience
-  const input = document.getElementById('challengeAnswer');
-  if (input) {
+  if (type === 'math') {
+    // reuse previous layout
+    const textDiv = document.createElement('div');
+    textDiv.className = 'challenge-text';
+    const label = document.createElement('div');
+    label.className = 'challenge-label';
+    label.textContent = 'Quick check';
+    const q = document.createElement('div');
+    q.id = 'challengeQuestion';
+    q.className = 'challenge-question';
+    textDiv.append(label, q);
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'challengeAnswer';
+    input.className = 'number-input';
+    input.placeholder = 'Answer';
+
+    container.appendChild(textDiv);
+    container.appendChild(input);
+    generateChallenge();
     input.value = '';
     input.focus();
+    if (unlockBtn) unlockBtn.disabled = false;
+    return;
   }
+
+  if (type === 'reason') {
+    const textDiv = document.createElement('div');
+    textDiv.className = 'challenge-text';
+    const label = document.createElement('div');
+    label.className = 'challenge-label';
+    label.textContent = 'Why do you really need this site right now?';
+    const hint = document.createElement('div');
+    hint.className = 'challenge-question';
+    const intensity = (entry && (entry.challengeIntensity || entry.intensity)) || 'medium';
+    const thresholds = { easy: 60, medium: 100, hard: 160 };
+    const thresh = thresholds[intensity] || 100;
+    hint.textContent = `Please write at least ${thresh} characters to continue.`;
+    const ta = document.createElement('textarea');
+    ta.id = 'reasonText';
+    ta.rows = 4;
+    ta.style.width = '100%';
+    ta.placeholder = 'Reflect on why you need this site...';
+
+    textDiv.append(label, hint);
+    container.appendChild(textDiv);
+    container.appendChild(ta);
+    if (unlockBtn) unlockBtn.disabled = false;
+    return;
+  }
+
+  if (type === 'delay') {
+    const textDiv = document.createElement('div');
+    textDiv.className = 'challenge-text';
+    const label = document.createElement('div');
+    label.className = 'challenge-label';
+    label.textContent = 'Delay before unlocking';
+    const hint = document.createElement('div');
+    hint.className = 'challenge-question';
+    const intensity = (entry && (entry.challengeIntensity || entry.intensity)) || 'medium';
+    const secondsMap = { easy: 10, medium: 20, hard: 40 };
+    delayRemaining = secondsMap[intensity] || 20;
+    hint.textContent = `You'll be able to unlock in ${delayRemaining} seconds; if it's not urgent, go back to your tasks.`;
+
+    const timerLabel = document.createElement('div');
+    timerLabel.id = 'delayTimerLabel';
+    timerLabel.className = 'challenge-question';
+    timerLabel.textContent = `${delayRemaining}s`;
+
+    textDiv.append(label, hint);
+    container.appendChild(textDiv);
+    container.appendChild(timerLabel);
+
+    if (unlockBtn) {
+      unlockBtn.disabled = true;
+      // start countdown
+      clearDelayInterval();
+      delayInterval = setInterval(() => {
+        delayRemaining -= 1;
+        if (delayRemaining <= 0) {
+          clearDelayInterval();
+          if (unlockBtn) unlockBtn.disabled = false;
+          const t = document.getElementById('delayTimerLabel');
+          if (t) t.textContent = 'Ready';
+          return;
+        }
+        const t = document.getElementById('delayTimerLabel');
+        if (t) t.textContent = `${delayRemaining}s`;
+      }, 1000);
+    }
+    return;
+  }
+
+  if (type === 'typing') {
+    // pick a short quote
+    typingQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+    const textDiv = document.createElement('div');
+    textDiv.className = 'challenge-text';
+    const label = document.createElement('div');
+    label.className = 'challenge-label';
+    label.textContent = 'Type the quote below to unlock';
+    const q = document.createElement('div');
+    q.id = 'typingQuote';
+    q.className = 'challenge-question';
+    q.textContent = `"${typingQuote}"`;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'typingInput';
+    input.placeholder = 'Type the quote exactly';
+    input.style.width = '100%';
+
+    textDiv.append(label, q);
+    container.appendChild(textDiv);
+    container.appendChild(input);
+    if (document.getElementById('typingInput')) document.getElementById('typingInput').focus();
+    if (unlockBtn) unlockBtn.disabled = false;
+    return;
+  }
+
+  // default: hide
+  container.style.display = 'none';
+  if (unlockBtn) unlockBtn.disabled = false;
 }
 
 function generateChallenge() {
@@ -389,8 +604,9 @@ if (unlockBtn) {
       Math.min(240, parseInt(minutesInput.value, 10) || 0)
     );
 
-    // If challenge is enabled globally, enforce it
-    if (mathChallengeEnabled) {
+    // Validate challenge depending on the current challenge type
+    const type = currentChallengeType || 'none';
+    if (type === 'math') {
       const answerInput = document.getElementById("challengeAnswer");
       if (!answerInput) {
         alert('Challenge input missing — cannot verify.');
@@ -403,6 +619,45 @@ if (unlockBtn) {
         generateChallenge();
         answerInput.value = "";
         answerInput.focus();
+        return;
+      }
+    } else if (type === 'reason') {
+      const ta = document.getElementById('reasonText');
+      if (!ta) {
+        alert('Reason input missing — cannot verify.');
+        return;
+      }
+      const txt = (ta.value || '').toString().trim();
+      const intensity = (currentChallengeEntry && (currentChallengeEntry.challengeIntensity || currentChallengeEntry.intensity)) || 'medium';
+      const thresholds = { easy: 60, medium: 100, hard: 160 };
+      const thresh = thresholds[intensity] || 100;
+      if (txt.length < thresh) {
+        alert(`Please write at least ${thresh} characters. You wrote ${txt.length}.`);
+        ta.focus();
+        return;
+      }
+    } else if (type === 'delay') {
+      // ensure countdown finished
+      if (delayRemaining > 0) {
+        alert(`Please wait ${delayRemaining} more second(s) before unlocking.`);
+        return;
+      }
+    } else if (type === 'typing') {
+      const input = document.getElementById('typingInput');
+      if (!input) {
+        alert('Typing input missing — cannot verify.');
+        return;
+      }
+      const v = (input.value || '').toString().trim();
+      if (!typingQuote) {
+        alert('Quote missing — cannot verify.');
+        return;
+      }
+      // Compare case-insensitive and normalize whitespace
+      const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+      if (norm(v) !== norm(typingQuote)) {
+        alert('Typed text does not match the quote. Try again.');
+        input.focus();
         return;
       }
     }
