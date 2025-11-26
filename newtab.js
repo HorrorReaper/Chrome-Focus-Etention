@@ -328,40 +328,51 @@ document.addEventListener("DOMContentLoaded", () => {
       updateState();
     });
   };
-  document.getElementById("addFavButton").onclick = () => {
-    console.log('Add Favorite button clicked');
-    alert('Add Favorite button clicked');
-  const urlInput = document.getElementById("newFavUrl");
-  const titleInput = document.getElementById("newFavTitle");
-  const iconInput = document.getElementById("newFavIcon");
+  // Attach handler to any Add Favorite button(s) robustly
+  const addFavHandler = (e) => {
+    console.log('Add Favorite invoked', e && e.target);
+    const urlInput = document.getElementById("newFavUrl");
+    const titleInput = document.getElementById("newFavTitle");
+    const iconInput = document.getElementById("newFavIcon");
+    if (!urlInput) {
+      console.warn('Add Favorite: inputs not found in DOM');
+      alert('Unable to add favorite: form not found.');
+      return;
+    }
 
-  let url = urlInput.value.trim();
-  const title = titleInput.value.trim();
-  const icon = iconInput.value.trim();
+    let url = (urlInput.value || '').trim();
+    const title = (titleInput && titleInput.value || '').trim();
+    const icon = (iconInput && iconInput.value || '').trim();
 
-  if (!url) {
-    alert("Please enter a URL.");
-    return;
-  }
+    if (!url) {
+      alert("Please enter a URL.");
+      return;
+    }
 
-  // Accept plain hostnames by adding https:// if missing, then validate
-  let candidate = url;
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) candidate = 'https://' + candidate;
-  try {
-    const parsed = new URL(candidate);
-    // use the normalized candidate URL
-    url = parsed.href;
-  } catch (e) {
-    alert("Please enter a valid URL (e.g. example.com or https://example.com)");
-    return;
-  }
+    // Accept plain hostnames by adding https:// if missing, then validate
+    let candidate = url;
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) candidate = 'https://' + candidate;
+    try {
+      const parsed = new URL(candidate);
+      // use the normalized candidate URL
+      url = parsed.href;
+    } catch (err) {
+      alert("Please enter a valid URL (e.g. example.com or https://example.com)");
+      return;
+    }
 
-  addFavorite(state, url, title || new URL(url).hostname, icon || "🔖");
+    try {
+      addFavorite(state, url, title || new URL(url).hostname, icon || "🔖");
+      if (urlInput) urlInput.value = "";
+      if (titleInput) titleInput.value = "";
+      if (iconInput) iconInput.value = "";
+    } catch (err) {
+      console.error('Error adding favorite', err);
+      alert('Failed to add favorite. See console for details.');
+    }
+  };
 
-  urlInput.value = "";
-  titleInput.value = "";
-  iconInput.value = "";
-};
+  document.querySelectorAll('#addFavButton').forEach(btn => btn.addEventListener('click', addFavHandler));
 
 document.getElementById("newFavUrl").onkeypress = (e) => {
   if (e.key === "Enter") {
