@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Favorites Storage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Favorites Storage Test</h1>
+
+    <div>
+        <button onclick="checkStorage()">Check Storage</button>
+        <button onclick="clearFavorites()">Clear Favorites</button>
+        <button onclick="addTestFavorite()">Add Test Favorite</button>
+    </div>
+
+    <h2>Storage Contents:</h2>
+    <pre id="output">Click "Check Storage" to see contents</pre>
+
+    <script>
+        function checkStorage() {
+            chrome.storage.sync.get(['favorites', 'activeList'], (data) => {
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+            });
+        }
+
+        function clearFavorites() {
+            chrome.storage.sync.remove('favorites', () => {
+                console.log('Favorites cleared');
+                checkStorage();
+            });
+        }
+
+        function addTestFavorite() {
+            chrome.storage.sync.get(['favorites', 'activeList'], (data) => {
+                const activeList = data.activeList || 'Default';
+                const favorites = data.favorites || {};
+
+                if (!favorites[activeList]) {
+                    favorites[activeList] = [];
+                }
+
+                favorites[activeList].push({
+                    url: 'https://example.com',
+                    title: 'Test Site',
+                    icon: '🧪'
+                });
+
+                chrome.storage.sync.set({ favorites }, () => {
+                    console.log('Test favorite added');
+                    checkStorage();
+                });
+            });
+        }
+
+        // Auto-check on load
+        checkStorage();
+    </script>
+</body>
+
+</html>

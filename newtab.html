@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Focus Startpage</title>
   <link rel="stylesheet" href="newtab.css" />
 </head>
+
 <body style="overflow-y: scroll;">
   <!-- Background + overlay handled in CSS -->
-   <div id="ytBackground" class="yt-bg hidden"></div>
+  <div id="ytBackground" class="yt-bg hidden"></div>
 
 
   <!-- Top-left brand (like the Focus screenshot) -->
@@ -57,15 +59,22 @@
           </div>
         </div>
         <div class="todo-input-row">
-          <input
-            type="text"
-            id="newTodoInput"
-            class="text-input"
-            placeholder="Enter a task..."
-          />
+          <input type="text" id="newTodoInput" class="text-input" placeholder="Enter a task..." />
           <button id="addTodoButton" class="primary-btn">Add Task</button>
         </div>
         <ul id="todoList" class="todo-list2 todo-list"></ul>
+      </div>
+
+      <!-- Favorites Display -->
+      <div class="card favorites-card" style="margin-top: 20px;">
+        <div class="card-header">
+          <div class="card-title">
+            Favorites (<span id="favListName">Default</span>)
+          </div>
+        </div>
+        <div id="favoriteLinks" class="favorites-grid"
+          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; padding: 10px;">
+        </div>
       </div>
     </section>
 
@@ -75,14 +84,8 @@
         <div id="timerDisplay" class="focus-timer">00:00</div>
         <div id="cycleInfo" class="cycle-info"></div>
         <div class="timer-controls">
-          <input
-            type="number"
-            id="timerInput"
-            class="timer-input"
-            min="0"
-            value="25"
-            placeholder="Minutes (0 = unlimited)"
-          />
+          <input type="number" id="timerInput" class="timer-input" min="0" value="25"
+            placeholder="Minutes (0 = unlimited)" />
           <button id="startButton" class="primary-btn large-round">Start</button>
         </div>
       </div>
@@ -96,59 +99,36 @@
         <button id="starCurrentSite" class="secondary-btn">⭐ Star current site</button>
       </div>
       <!-- URL Management -->
-<div class="settings-section">
-  <h3 class="section-title">URLs in "<span id="currentListName"></span>"</h3>
+      <div class="settings-section">
+        <h3 class="section-title">URLs in "<span id="currentListName"></span>"</h3>
 
-  <div class="settings-row" style="gap: 8px;">
-    <input
-      type="text"
-      id="newUrlInput"
-      class="text-input"
-      placeholder="example.com"
-      style="flex: 1;"
-    />
-    <button id="addUrlButton" class="primary-btn">Add URL</button>
-  </div>
+        <div class="settings-row" style="gap: 8px;">
+          <input type="text" id="newUrlInput" class="text-input" placeholder="example.com" style="flex: 1;" />
+          <button id="addUrlButton" class="primary-btn">Add URL</button>
+        </div>
 
-  <ul id="urlList" class="url-list">
-    <!-- Populated by JS -->
-  </ul>
-</div>
+        <ul id="urlList" class="url-list">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
 
-<!-- NEW: Favorites Management -->
-<div class="settings-section">
-  <h3 class="section-title">Favorites in "<span id="currentFavListName"></span>"</h3>
+      <!-- NEW: Favorites Management -->
+      <div class="settings-section">
+        <h3 class="section-title">Favorites in "<span id="currentFavListName"></span>"</h3>
 
-  <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
-    <input
-      type="text"
-      id="newFavUrl"
-      class="text-input"
-      placeholder="https://example.com"
-      style="flex: 1; min-width: 200px;"
-    />
-    <input
-      type="text"
-      id="newFavTitle"
-      class="text-input"
-      placeholder="Title"
-      style="width: 150px;"
-    />
-    <input
-      type="text"
-      id="newFavIcon"
-      class="text-input"
-      placeholder="🔖"
-      style="width: 60px; text-align: center;"
-      maxlength="2"
-    />
-    <button id="addFavButton" class="primary-btn">Add Favorite</button>
-  </div>
+        <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
+          <input type="text" id="newFavUrl" class="text-input" placeholder="https://example.com"
+            style="flex: 1; min-width: 200px;" />
+          <input type="text" id="newFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
+          <input type="text" id="newFavIcon" class="text-input" placeholder="🔖"
+            style="width: 60px; text-align: center;" maxlength="2" />
+          <button id="addFavButton" class="primary-btn">Add Favorite</button>
+        </div>
 
-  <ul id="favList" class="fav-list">
-    <!-- Populated by JS -->
-  </ul>
-</div>
+        <ul id="favList" class="fav-list">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
 
     </section>
 
@@ -165,170 +145,119 @@
           </div>
         </div>
         <div id="listEditorPanel" class="hidden">
-        <div class="settings-row list-management">
-          <label class="settings-label">Manage Lists</label>
-          <div class="list-controls">
-            <input type="text" id="newListName" class="text-input" placeholder="New list name" />
-            <button id="createList" class="secondary-btn createListButton">Create</button>
-            <button id="renameList" class="secondary-btn">Rename</button>
-            <button id="deleteList" class="warn-btn">Delete</button>
+          <div class="settings-row list-management">
+            <label class="settings-label">Manage Lists</label>
+            <div class="list-controls">
+              <input type="text" id="newListName" class="text-input" placeholder="New list name" />
+              <button id="createList" class="secondary-btn createListButton">Create</button>
+              <button id="renameList" class="secondary-btn">Rename</button>
+              <button id="deleteList" class="warn-btn">Delete</button>
+            </div>
           </div>
-        </div>
-        <div class="settings-row list-urls">
-          <label class="settings-label">URLs in list</label><br>
-        </div>
-        <div class="settings-row list-urls" style="display: block;">
-          
-          
-          <ul id="settingsDomainList" class="whitelist-list"></ul>
-          
-          <div class="url-controls">
-            <input type="text" id="newListUrl" class="text-input" placeholder="example.com or https://site.com/path" />
-            <button id="addListUrlButton" class="secondary-btn">Add URL</button>
+          <div class="settings-row list-urls">
+            <label class="settings-label">URLs in list</label><br>
           </div>
-        </div>
-        </div>
-        </div>
+          <div class="settings-row list-urls" style="display: block;">
 
+
+            <ul id="settingsDomainList" class="whitelist-list"></ul>
+
+            <div class="url-controls">
+              <input type="text" id="newListUrl" class="text-input"
+                placeholder="example.com or https://site.com/path" />
+              <button id="addListUrlButton" class="secondary-btn">Add URL</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="timerInput">
+          Default timer (minutes, 0 = unlimited)
+        </label>
+        <input type="number" id="settingsTimerInput" class="number-input" min="0" value="25" disabled />
+        <span class="settings-hint">(uses same value as focus timer)</span>
+      </div>
+
+      <div class="settings-row settings-toggle">
+        <label class="settings-label" for="pomodoroToggle">
+          Enable Pomodoro Mode
+        </label>
+        <input type="checkbox" id="pomodoroToggle" />
+      </div>
+
+      <div id="pomodoroOptions" class="pomodoro-options hidden">
         <div class="settings-row">
-          <label class="settings-label" for="timerInput">
-            Default timer (minutes, 0 = unlimited)
-          </label>
-          <input
-            type="number"
-            id="settingsTimerInput"
-            class="number-input"
-            min="0"
-            value="25"
-            disabled
-          />
-          <span class="settings-hint">(uses same value as focus timer)</span>
-        </div>
-
-        <div class="settings-row settings-toggle">
-          <label class="settings-label" for="pomodoroToggle">
-            Enable Pomodoro Mode
-          </label>
-          <input type="checkbox" id="pomodoroToggle" />
-        </div>
-
-        <div id="pomodoroOptions" class="pomodoro-options hidden">
-          <div class="settings-row">
-            <label class="settings-label" for="pomodoroWork">Work (min)</label>
-            <input
-              type="number"
-              id="pomodoroWork"
-              class="number-input"
-              min="1"
-              value="25"
-            />
-          </div>
-          <div class="settings-row">
-            <label class="settings-label" for="pomodoroBreak">Break (min)</label>
-            <input
-              type="number"
-              id="pomodoroBreak"
-              class="number-input"
-              min="1"
-              value="5"
-            />
-          </div>
-          <div class="settings-row">
-            <label class="settings-label" for="pomodoroLongBreak">
-              Long Break (min)
-            </label>
-            <input
-              type="number"
-              id="pomodoroLongBreak"
-              class="number-input"
-              min="1"
-              value="15"
-            />
-          </div>
+          <label class="settings-label" for="pomodoroWork">Work (min)</label>
+          <input type="number" id="pomodoroWork" class="number-input" min="1" value="25" />
         </div>
         <div class="settings-row">
-  <label class="settings-label" for="youtubeBgUrl">
-    YouTube background (optional)
-  </label>
-  <input
-    type="text"
-    id="youtubeBgUrl"
-    class="text-input"
-    placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
-  />
-</div>
+          <label class="settings-label" for="pomodoroBreak">Break (min)</label>
+          <input type="number" id="pomodoroBreak" class="number-input" min="1" value="5" />
+        </div>
+        <div class="settings-row">
+          <label class="settings-label" for="pomodoroLongBreak">
+            Long Break (min)
+          </label>
+          <input type="number" id="pomodoroLongBreak" class="number-input" min="1" value="15" />
+        </div>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label" for="youtubeBgUrl">
+          YouTube background (optional)
+        </label>
+        <input type="text" id="youtubeBgUrl" class="text-input"
+          placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
+      </div>
 
-<div class="settings-row settings-toggle">
-  <label class="settings-label" for="useYoutubeBg">
-    Use YouTube video as background
-  </label>
-  <input type="checkbox" id="useYoutubeBg" />
-</div>
-<div class="settings-row settings-toggle">
-  <label class="settings-label" for="enableMathChallenge">
-    Require math challenge to unlock blocked sites
-  </label>
-  <input type="checkbox" id="enableMathChallenge" />
-</div>
-<!-- URL Management -->
-<div class="settings-section">
+      <div class="settings-row settings-toggle">
+        <label class="settings-label" for="useYoutubeBg">
+          Use YouTube video as background
+        </label>
+        <input type="checkbox" id="useYoutubeBg" />
+      </div>
+      <div class="settings-row settings-toggle">
+        <label class="settings-label" for="enableMathChallenge">
+          Require math challenge to unlock blocked sites
+        </label>
+        <input type="checkbox" id="enableMathChallenge" />
+      </div>
+      <!-- URL Management -->
+      <div class="settings-section">
 
-  <div class="settings-row" style="gap: 8px;">
-    <input
-      type="text"
-      id="newUrlInput"
-      class="text-input"
-      placeholder="example.com"
-      style="flex: 1;"
-    />
-    <button id="addUrlButton" class="primary-btn">Add URL</button>
-  </div>
+        <div class="settings-row" style="gap: 8px;">
+          <input type="text" id="newUrlInput" class="text-input" placeholder="example.com" style="flex: 1;" />
+          <button id="addUrlButton" class="primary-btn">Add URL</button>
+        </div>
 
-  <ul id="urlList" class="url-list">
-    <!-- Populated by JS -->
-  </ul>
-</div>
+        <ul id="urlList" class="url-list">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
 
-<!-- NEW: Favorites Management -->
-<div class="settings-section">
-  <h3 class="section-title">Favorites</h3>
+      <!-- NEW: Favorites Management -->
+      <div class="settings-section">
+        <h3 class="section-title">Favorites</h3>
 
-  <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
-    <input
-      type="text"
-      id="newFavUrl"
-      class="text-input"
-      placeholder="https://example.com"
-      style="flex: 1; min-width: 200px;"
-    />
-    <input
-      type="text"
-      id="newFavTitle"
-      class="text-input"
-      placeholder="Title"
-      style="width: 150px;"
-    />
-    <input
-      type="text"
-      id="newFavIcon"
-      class="text-input"
-      placeholder="🔖"
-      style="width: 60px; text-align: center;"
-      maxlength="2"
-    />
-    <button id="addFavButton" class="primary-btn">Add Favorite</button>
-  </div>
+        <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
+          <input type="text" id="settingsNewFavUrl" class="text-input" placeholder="https://example.com"
+            style="flex: 1; min-width: 200px;" />
+          <input type="text" id="settingsNewFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
+          <input type="text" id="settingsNewFavIcon" class="text-input" placeholder="🔖"
+            style="width: 60px; text-align: center;" maxlength="2" />
+          <button id="settingsAddFavButton" class="primary-btn">Add Favorite</button>
+        </div>
 
-  <ul id="favList" class="fav-list">
-    <!-- Populated by JS -->
-  </ul>
-</div>
+        <ul id="settingsFavList" class="fav-list">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
 
 
 
-        <button id="saveSettings" class="primary-btn full-width">
-          Save Settings
-        </button>
+      <button id="saveSettings" class="primary-btn full-width">
+        Save Settings
+      </button>
       </div>
     </section>
   </main>
@@ -336,4 +265,5 @@
 
   <script type="module" src="newtab.js"></script>
 </body>
+
 </html>

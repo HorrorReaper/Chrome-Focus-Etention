@@ -8,10 +8,10 @@ import { saveSettings } from "./lib/settings.js";
 import { renderFavList, renderFavorites, addFavorite } from "./lib/favorites.js";
 console.log('[newtab] module loaded');
 window.addEventListener('error', (e) => {
-  try { console.error('[newtab] window.error', e && (e.error || e.message || e)); } catch(_){}
+  try { console.error('[newtab] window.error', e && (e.error || e.message || e)); } catch (_) { }
 });
 window.addEventListener('unhandledrejection', (e) => {
-  try { console.error('[newtab] unhandledrejection', e && (e.reason || e)); } catch(_){}
+  try { console.error('[newtab] unhandledrejection', e && (e.reason || e)); } catch (_) { }
 });
 let interval;
 let state = {
@@ -48,7 +48,10 @@ function updateState() {
       console.warn("getState returned no response", chrome.runtime.lastError);
       return;
     }
+    console.log('[newtab] updateState - received favorites:', response.favorites);
+    console.log('[newtab] updateState - current state favorites before merge:', state.favorites);
     state = { ...state, ...response };
+    console.log('[newtab] updateState - state favorites after merge:', state.favorites);
     updateUI();
   });
 }
@@ -105,7 +108,7 @@ function renderListEditor() {
         star.title = 'Also in favorites';
         span.appendChild(star);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Challenge type selector
     const typeSel = document.createElement('select');
@@ -236,11 +239,11 @@ function updateUI() {
   document.getElementById("pomodoroBreak").value = state.pomodoroBreak;
   document.getElementById("pomodoroLongBreak").value = state.pomodoroLongBreak;
   // In updateUI(), after you handle pomodoro fields
-chrome.storage.sync.get(["enableMathChallenge"], (data) => {
-  const challengeToggle = document.getElementById("enableMathChallenge");
-  if (!challengeToggle) return;
-  challengeToggle.checked = !!data.enableMathChallenge;
-});
+  chrome.storage.sync.get(["enableMathChallenge"], (data) => {
+    const challengeToggle = document.getElementById("enableMathChallenge");
+    if (!challengeToggle) return;
+    challengeToggle.checked = !!data.enableMathChallenge;
+  });
 
 
   // Timer input default (for non‑Pomodoro)
@@ -266,10 +269,10 @@ chrome.storage.sync.get(["enableMathChallenge"], (data) => {
   document.getElementById("quoteAuthor").textContent = randomQuote.author
     ? `— ${randomQuote.author}`
     : "";
-    
-renderFavorites(state);
-renderFavList(state);
-  }
+
+  renderFavorites(state);
+  renderFavList(state);
+}
 
 
 
@@ -282,7 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateState();
 
   interval = setInterval(() => {
-    
+
     updateTimerDisplay(state);
     updateClock(state, updateState);
   }, 1000);
@@ -329,14 +332,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   // Attach handler to any Add Favorite button(s) robustly
-  const addFavHandler = (e) => {
-    console.log('Add Favorite invoked', e && e.target);
-    const urlInput = document.getElementById("newFavUrl");
-    const titleInput = document.getElementById("newFavTitle");
-    const iconInput = document.getElementById("newFavIcon");
+  // Attach handler to Add Favorite buttons
+  const addFavHandler = (urlId, titleId, iconId) => {
+    const urlInput = document.getElementById(urlId);
+    const titleInput = document.getElementById(titleId);
+    const iconInput = document.getElementById(iconId);
+
     if (!urlInput) {
       console.warn('Add Favorite: inputs not found in DOM');
-      alert('Unable to add favorite: form not found.');
       return;
     }
 
@@ -372,13 +375,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  document.querySelectorAll('#addFavButton').forEach(btn => btn.addEventListener('click', addFavHandler));
-
-document.getElementById("newFavUrl").onkeypress = (e) => {
-  if (e.key === "Enter") {
-    document.getElementById("addFavButton").click();
+  const btn1 = document.getElementById('addFavButton');
+  if (btn1) {
+    btn1.onclick = () => addFavHandler('newFavUrl', 'newFavTitle', 'newFavIcon');
   }
-};
+
+  const btn2 = document.getElementById('settingsAddFavButton');
+  if (btn2) {
+    btn2.onclick = () => addFavHandler('settingsNewFavUrl', 'settingsNewFavTitle', 'settingsNewFavIcon');
+  }
+
+  const input1 = document.getElementById("newFavUrl");
+  if (input1) {
+    input1.onkeypress = (e) => {
+      if (e.key === "Enter") {
+        if (btn1) btn1.click();
+      }
+    };
+  }
+
+  const input2 = document.getElementById("settingsNewFavUrl");
+  if (input2) {
+    input2.onkeypress = (e) => {
+      if (e.key === "Enter") {
+        if (btn2) btn2.click();
+      }
+    };
+  }
 
   // Star current site button (focus page)
   const starBtn = document.getElementById('starCurrentSite');
@@ -545,7 +568,7 @@ document.getElementById("newFavUrl").onkeypress = (e) => {
       .getElementById("whitelistDisplay")
       .classList.toggle("hidden", tabName !== "focus");
   }
-    // inside DOMContentLoaded, after other settings listeners:
+  // inside DOMContentLoaded, after other settings listeners:
 
   const ytUrlInput = document.getElementById("youtubeBgUrl");
   const ytToggle = document.getElementById("useYoutubeBg");
