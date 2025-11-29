@@ -21,15 +21,6 @@
     </div>
   </div>
 
-  <!-- Top-right icons -->
-  <div class="top-icons">
-    <button class="icon-btn" aria-label="Settings">
-      ⚙
-    </button>
-    <button class="icon-btn" aria-label="Info">
-      ⓘ
-    </button>
-  </div>
 
   <!-- Centered tab navigation -->
   <div class="top-nav">
@@ -173,96 +164,97 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="settings-row">
-        <label class="settings-label" for="timerInput">
-          Default timer (minutes, 0 = unlimited)
-        </label>
-        <input type="number" id="settingsTimerInput" class="number-input" min="0" value="25" disabled />
-        <span class="settings-hint">(uses same value as focus timer)</span>
-      </div>
-
-      <div class="settings-row settings-toggle">
-        <label class="settings-label" for="pomodoroToggle">
-          Enable Pomodoro Mode
-        </label>
-        <input type="checkbox" id="pomodoroToggle" />
-      </div>
-
-      <div id="pomodoroOptions" class="pomodoro-options hidden">
         <div class="settings-row">
-          <label class="settings-label" for="pomodoroWork">Work (min)</label>
-          <input type="number" id="pomodoroWork" class="number-input" min="1" value="25" />
-        </div>
-        <div class="settings-row">
-          <label class="settings-label" for="pomodoroBreak">Break (min)</label>
-          <input type="number" id="pomodoroBreak" class="number-input" min="1" value="5" />
-        </div>
-        <div class="settings-row">
-          <label class="settings-label" for="pomodoroLongBreak">
-            Long Break (min)
+          <label class="settings-label" for="timerInput">
+            Default timer (minutes, 0 = unlimited)
           </label>
-          <input type="number" id="pomodoroLongBreak" class="number-input" min="1" value="15" />
-        </div>
-      </div>
-      <div class="settings-row">
-        <label class="settings-label" for="youtubeBgUrl">
-          YouTube background (optional)
-        </label>
-        <input type="text" id="youtubeBgUrl" class="text-input"
-          placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
-      </div>
-
-      <div class="settings-row settings-toggle">
-        <label class="settings-label" for="useYoutubeBg">
-          Use YouTube video as background
-        </label>
-        <input type="checkbox" id="useYoutubeBg" />
-      </div>
-      <div class="settings-row settings-toggle">
-        <label class="settings-label" for="enableMathChallenge">
-          Require math challenge to unlock blocked sites
-        </label>
-        <input type="checkbox" id="enableMathChallenge" />
-      </div>
-      <!-- URL Management -->
-      <div class="settings-section">
-
-        <div class="settings-row" style="gap: 8px;">
-          <input type="text" id="newUrlInput" class="text-input" placeholder="example.com" style="flex: 1;" />
-          <button id="addUrlButton" class="primary-btn">Add URL</button>
+          <input type="number" id="settingsTimerInput" class="number-input" min="0" value="25" disabled />
+          <span class="settings-hint">(uses same value as focus timer)</span>
         </div>
 
-        <ul id="urlList" class="url-list">
-          <!-- Populated by JS -->
-        </ul>
-      </div>
-
-      <!-- NEW: Favorites Management -->
-      <div class="settings-section">
-        <h3 class="section-title">Favorites</h3>
-
-        <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
-          <input type="text" id="settingsNewFavUrl" class="text-input" placeholder="https://example.com"
-            style="flex: 1; min-width: 200px;" />
-          <input type="text" id="settingsNewFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
-          <input type="text" id="settingsNewFavIcon" class="text-input" placeholder="🔖"
-            style="width: 60px; text-align: center;" maxlength="2" />
-          <button id="settingsAddFavButton" class="primary-btn">Add Favorite</button>
+        <div class="settings-row settings-toggle">
+          <label class="settings-label" for="pomodoroToggle">
+            Enable Pomodoro Mode
+          </label>
+          <input type="checkbox" id="pomodoroToggle" />
         </div>
 
-        <ul id="settingsFavList" class="fav-list">
-          <!-- Populated by JS -->
-        </ul>
+        <div id="pomodoroOptions" class="pomodoro-options hidden">
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroWork">Work (min)</label>
+            <input type="number" id="pomodoroWork" class="number-input" min="1" value="25" />
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroBreak">Break (min)</label>
+            <input type="number" id="pomodoroBreak" class="number-input" min="1" value="5" />
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="pomodoroLongBreak">
+              Long Break (min)
+            </label>
+            <input type="number" id="pomodoroLongBreak" class="number-input" min="1" value="15" />
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label" for="youtubeBgUrl">
+            YouTube background (optional)
+          </label>
+          <input type="text" id="youtubeBgUrl" class="text-input"
+            placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
+        </div>
+
+        <div class="settings-row settings-toggle">
+          <label class="settings-label" for="useYoutubeBg">
+            Use YouTube video as background
+          </label>
+          <input type="checkbox" id="useYoutubeBg" />
+        </div>
+        <div class="settings-row settings-toggle">
+          <label class="settings-label" for="enableMathChallenge">
+            Require math challenge to unlock blocked sites
+          </label>
+          <input type="checkbox" id="enableMathChallenge" />
+        </div>
+        <!-- URL Management -->
+        <div class="settings-section">
+
+          <div class="settings-row" style="gap: 8px;">
+            <input type="text" id="newUrlInput" class="text-input" placeholder="example.com" style="flex: 1;" />
+            <button id="addUrlButton" class="primary-btn">Add URL</button>
+          </div>
+
+          <ul id="urlList" class="url-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- NEW: Favorites Management -->
+        <div class="settings-section">
+          <h3 class="section-title">Favorites</h3>
+
+          <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
+            <input type="text" id="settingsNewFavUrl" class="text-input" placeholder="https://example.com"
+              style="flex: 1; min-width: 200px;" />
+            <input type="text" id="settingsNewFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
+            <input type="text" id="settingsNewFavIcon" class="text-input" placeholder="🔖"
+              style="width: 60px; text-align: center;" maxlength="2" />
+            <button id="settingsAddFavButton" class="primary-btn">Add Favorite</button>
+          </div>
+
+          <ul id="settingsFavList" class="fav-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+
+
+        <button id="saveSettings" class="primary-btn full-width">
+          Save Settings
+        </button>
+      </div>
       </div>
 
 
-
-      <button id="saveSettings" class="primary-btn full-width">
-        Save Settings
-      </button>
-      </div>
     </section>
   </main>
 
