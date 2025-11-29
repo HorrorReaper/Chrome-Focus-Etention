@@ -328,6 +328,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
 
+    if (message.type === "updateTodo") {
+      const listName = activeList || "Default";
+      if (!todos[listName]) todos[listName] = [];
+
+      if (message.action === "add") {
+        todos[listName].push({ text: message.value, done: false });
+      } else if (message.action === "toggle") {
+        const item = todos[listName][message.index];
+        if (item) item.done = !item.done;
+      } else if (message.action === "delete") {
+        todos[listName].splice(message.index, 1);
+      }
+
+      chrome.storage.sync.set({ todos }, () => {
+        chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => { });
+        sendResponse({ success: true });
+      });
+      return true;
+    }
+
     // Unknown message
     sendResponse({ success: false, error: 'unknown_message' });
     return true;
