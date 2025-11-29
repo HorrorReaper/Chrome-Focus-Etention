@@ -771,3 +771,37 @@ body::before {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
+
+/* NOTES PANEL */
+.notes-card {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-area {
+  flex: 1;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  margin-top: 10px;
+}
+
+#notesTextarea {
+  border-radius: 10px;
+}
+
+.notes-area::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}

@@ -552,11 +552,13 @@ document.addEventListener("DOMContentLoaded", () => {
     clock: document.getElementById("clockDisplay"),
     focus: document.querySelector(".timer-container"),
     settings: document.getElementById("settingsPanel"),
+    notes: document.getElementById("notesPanel"),
   };
   const buttons = {
     clock: document.getElementById("clockTab"),
     focus: document.getElementById("focusTab"),
     settings: document.getElementById("settingsTab"),
+    notes: document.getElementById("notesTab"),
   };
 
   function switchTab(tabName) {
@@ -585,6 +587,18 @@ document.addEventListener("DOMContentLoaded", () => {
   buttons.clock.onclick = () => switchTab("clock");
   buttons.focus.onclick = () => switchTab("focus");
   buttons.settings.onclick = () => switchTab("settings");
+  if (buttons.notes) buttons.notes.onclick = () => switchTab("notes");
+
+  // Notes persistence
+  const notesArea = document.getElementById("notesTextarea");
+  if (notesArea) {
+    chrome.storage.sync.get(["userNotes"], (data) => {
+      notesArea.value = data.userNotes || "";
+    });
+    notesArea.addEventListener("input", () => {
+      chrome.storage.sync.set({ userNotes: notesArea.value });
+    });
+  }
 
   switchTab("clock"); // default view
 });

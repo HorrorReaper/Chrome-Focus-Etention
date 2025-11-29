@@ -17,8 +17,7 @@
   <div class="brand-badge">
     <div class="brand-lines">
       <span>FOCUS V1.0.0</span>
-      <span>CREATED BY YOU.</span>
-      <span>STAY ON TASK.</span>
+      <span>CREATED BY Patrick Eger.</span>
     </div>
   </div>
 
@@ -37,6 +36,7 @@
     <button id="clockTab" class="nav-tab active">CLOCK</button>
     <button id="focusTab" class="nav-tab">FOCUS</button>
     <button id="settingsTab" class="nav-tab">SETTINGS</button>
+    <button id="notesTab" class="nav-tab">NOTES</button>
   </div>
 
   <!-- Main area -->
@@ -89,7 +89,6 @@
           <button id="startButton" class="primary-btn large-round">Start</button>
         </div>
       </div>
-
       <div id="whitelistDisplay" class="card whitelist-card">
         <div class="card-title">ACTIVE WHITELIST:</div>
         <div class="whitelist-name" id="activeListName">Default</div>
@@ -98,7 +97,7 @@
       <div style="margin-top:10px;">
         <button id="starCurrentSite" class="secondary-btn">⭐ Star current site</button>
       </div>
-      <!-- URL Management -->
+
       <div class="settings-section">
         <h3 class="section-title">URLs in "<span id="currentListName"></span>"</h3>
 
@@ -108,11 +107,11 @@
         </div>
 
         <ul id="urlList" class="url-list">
-          <!-- Populated by JS -->
+
         </ul>
       </div>
 
-      <!-- NEW: Favorites Management -->
+
       <div class="settings-section">
         <h3 class="section-title">Favorites in "<span id="currentFavListName"></span>"</h3>
 
@@ -126,11 +125,16 @@
         </div>
 
         <ul id="favList" class="fav-list">
-          <!-- Populated by JS -->
         </ul>
       </div>
 
     </section>
+    <section id="notesPanel" class="panel hidden">
+      <h3 class="section-title">Notes</h3>
+      <textarea id="notesTextarea" class="text-input" placeholder="Write your notes here..."
+        style="width: 100%; min-height: 150px; resize: vertical;"></textarea>
+    </section>
+
 
     <!-- SETTINGS TAB -->
     <section id="settingsPanel" class="panel hidden">
