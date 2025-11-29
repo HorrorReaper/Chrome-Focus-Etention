@@ -5,6 +5,15 @@ let currentCycle = 0;   // 0 = work, 1 = break
 let pomodoroCount = 0;  // completed work cycles
 let temporaryUnlocks = {}; // { domain: expireTimestampMs }
 
+// State variables
+let lists = { Default: [] };
+let todos = { Default: [] };
+let favorites = { Default: [] };
+let activeList = "Default";
+let enabled = false;
+let timerEnd = null;
+let pomodoroMode = false;
+let enableMathChallenge = false;
 
 // NEW: pause state
 let paused = false;
@@ -94,6 +103,8 @@ chrome.storage.sync.get(
     if (enabled && timerEnd && timerEnd > Date.now()) {
       setAlarm((timerEnd - Date.now()) / 60000);
     }
+    // Notify any open pages that state is loaded
+    chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => { });
   }
 );
 
