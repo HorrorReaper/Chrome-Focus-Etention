@@ -1,45 +1,80 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>Whitelist Manager</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 15px; width: 350px; }
-    h2 { margin-top: 0; }
-    label { font-size: 1.1em; }
-    select, input { padding: 5px; margin: 5px 0; }
-    button { padding: 5px 8px; margin: 2px; }
-    #addCurrent { width: 100%; background: #1976d2; color: white; border: none; }
-    ul { list-style-type: none; padding: 0; max-height: 200px; overflow-y: auto; }
-    li { margin: 8px 0; display: flex; justify-content: space-between; background: #f0f0f0; padding: 5px; border-radius: 4px; }
-    .remove { color: red; cursor: pointer; font-weight: bold; }
-    #listActions { margin: 10px 0; }
-    #timerInput { width: 50px; }
-  </style>
+  <title>Focus Manager</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
-  <h2>Whitelist Blocker</h2>
-  <label>
-    <input type="checkbox" id="enableToggle"> Enable Blocking
-  </label>
-  <span> for <input type="number" id="timerInput" min="0" value="0"> minutes (0 = unlimited)</span>
-  <hr>
-  <div id="listSelector">
-    <label>Active List:</label>
-    <select id="activeListSelect"></select>
+  <header>
+    <h2>Focus</h2>
+    <div class="toggle-wrapper">
+      <label class="switch">
+        <input type="checkbox" id="enableToggle">
+        <span class="slider"></span>
+      </label>
+      <span id="statusText">Disabled</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="whitelist">Whitelist</button>
+    <button class="tab-btn" data-tab="favorites">Favorites</button>
   </div>
-  <div id="listActions">
-    <input type="text" id="newListName" placeholder="New list name">
-    <button id="createList">Create</button>
-    <button id="renameList">Rename</button>
-    <button id="deleteList">Delete</button>
-  </div>
-  <hr>
-  <button id="addCurrent">Add Current Site's Domain</button>
-  <div>
-    <input type="text" id="siteInput" placeholder="e.g., youtube.com">
-    <button id="addButton">Add</button>
-  </div>
-  <ul id="whitelistList"></ul>
+
+  <main>
+    <!-- Whitelist Panel -->
+    <div id="whitelistPanel" class="panel active">
+      <div class="control-row">
+        <select id="activeListSelect" style="flex: 1;"></select>
+        <button id="manageListsBtn" class="btn-secondary" title="Manage Lists">Manage</button>
+      </div>
+
+      <!-- List Management (Hidden by default) -->
+      <div id="listManagement" class="control-row" style="display: none; flex-direction: column; align-items: stretch;">
+        <div class="control-group">
+          <input type="text" id="newListName" placeholder="New list name">
+          <button id="createList" class="btn-primary">Create</button>
+        </div>
+        <div class="control-group">
+          <button id="renameList" class="btn-secondary" style="flex: 1;">Rename Current</button>
+          <button id="deleteList" class="btn-danger" style="flex: 1;">Delete Current</button>
+        </div>
+      </div>
+
+      <button id="addCurrentSite" class="btn-primary btn-full">Add Current Site to Whitelist</button>
+
+      <div class="control-group" style="margin-bottom: 12px;">
+        <input type="text" id="siteInput" placeholder="example.com">
+        <button id="addSiteBtn" class="btn-secondary">Add</button>
+      </div>
+
+      <ul id="whitelistList"></ul>
+    </div>
+
+    <!-- Favorites Panel -->
+    <div id="favoritesPanel" class="panel">
+      <div class="control-row">
+        <span style="font-size: 12px; color: var(--muted);">List: <b id="favListName">Default</b></span>
+      </div>
+
+      <button id="addCurrentFav" class="btn-primary btn-full">Add Current Site to Favorites</button>
+
+      <div class="control-group" style="margin-bottom: 12px;">
+        <input type="text" id="favUrlInput" placeholder="https://example.com">
+      </div>
+      <div class="control-group" style="margin-bottom: 12px;">
+        <input type="text" id="favTitleInput" placeholder="Title" style="flex: 2;">
+        <input type="text" id="favIconInput" placeholder="Icon" style="flex: 1; text-align: center;" maxlength="2">
+        <button id="addFavBtn" class="btn-secondary">Add</button>
+      </div>
+
+      <ul id="favoritesList"></ul>
+    </div>
+  </main>
+
   <script src="popup.js"></script>
 </body>
+
 </html>

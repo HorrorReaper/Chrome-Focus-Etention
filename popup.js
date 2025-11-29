@@ -1,252 +1,355 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const siteInput = document.getElementById('siteInput');
-  const addButton = document.getElementById('addButton');
-  const addCurrent = document.getElementById('addCurrent');
-  const whitelistList = document.getElementById('whitelistList');
+  // Elements
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
   const enableToggle = document.getElementById('enableToggle');
-  const timerInput = document.getElementById('timerInput');
+  const statusText = document.getElementById('statusText');
+
+  // Whitelist Elements
   const activeListSelect = document.getElementById('activeListSelect');
+  const manageListsBtn = document.getElementById('manageListsBtn');
+  const listManagement = document.getElementById('listManagement');
   const newListName = document.getElementById('newListName');
   const createList = document.getElementById('createList');
   const renameList = document.getElementById('renameList');
   const deleteList = document.getElementById('deleteList');
+  const addCurrentSite = document.getElementById('addCurrentSite');
+  const siteInput = document.getElementById('siteInput');
+  const addSiteBtn = document.getElementById('addSiteBtn');
+  const whitelistList = document.getElementById('whitelistList');
 
-  let lists = { "Default": [] };
-  let activeList = "Default";
+  // Favorites Elements
+  const favListName = document.getElementById('favListName');
+  const addCurrentFav = document.getElementById('addCurrentFav');
+  const favUrlInput = document.getElementById('favUrlInput');
+  const favTitleInput = document.getElementById('favTitleInput');
+  const favIconInput = document.getElementById('favIconInput');
+  const addFavBtn = document.getElementById('addFavBtn');
+  const favoritesList = document.getElementById('favoritesList');
 
-  // Load initial data
+  // State
+  let state = {
+    lists: { "Default": [] },
+    favorites: { "Default": [] },
+    activeList: "Default",
+    enabled: false
+  };
+
+  // --- Initialization ---
+
+  function init() {
+    loadData();
+    setupTabs();
+    setupEventListeners();
+  }
+
   function loadData() {
-    chrome.storage.sync.get(['lists', 'activeList', 'enabled', 'timerEnd'], (data) => {
-      lists = data.lists || { "Default": [] };
-      // Normalize lists entries to canonical format: { url, requireChallenge, challengeType }
-      try {
-        Object.keys(lists).forEach((k) => {
-          if (!Array.isArray(lists[k])) {
-            lists[k] = [];
-            return;
-          }
-          if (lists[k].length && typeof lists[k][0] === 'string') {
-            lists[k] = lists[k].map((d) => ({ url: d, requireChallenge: false, challengeType: 'none' }));
-          } else {
-            lists[k] = lists[k].map((d) => {
-              if (!d) return null;
-              if (typeof d === 'string') return { url: d, requireChallenge: false, challengeType: 'none' };
-              const url = d.url || d.domain || '';
-              const req = !!(d.requireChallenge || d.challengeRequired);
-              const challengeType = d.challengeType || (req ? 'math' : 'none');
-              const challengeIntensity = d.challengeIntensity || d.intensity || undefined;
-              const out = { url, requireChallenge: req, challengeType };
-              if (challengeIntensity) out.challengeIntensity = challengeIntensity;
-              return out;
-            }).filter(Boolean);
-          }
-        });
-        // Persist normalization back to storage so other parts see canonical format
-        chrome.storage.sync.set({ lists });
-      } catch (e) {
-        console.warn('Failed to normalize lists in popup:', e);
+    chrome.storage.sync.get(['lists', 'favorites', 'activeList', 'enabled'], (data) => {
+      state.lists = data.lists || { "Default": [] };
+      state.favorites = data.favorites || { "Default": [] };
+      state.activeList = data.activeList || "Default";
+      state.enabled = data.enabled || false;
+
+      // Ensure favorites structure exists
+      if (!state.favorites[state.activeList]) {
+        state.favorites[state.activeList] = [];
       }
-      activeList = data.activeList || "Default";
-      enableToggle.checked = data.enabled !== false;
 
-      // Populate list selector
-      activeListSelect.innerHTML = '';
-      Object.keys(lists).forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        if (name === activeList) option.selected = true;
-        activeListSelect.appendChild(option);
-      });
-
-      loadWhitelist();
+      updateUI();
     });
   }
 
-  // Toggle enable (and set timer)
-  enableToggle.onchange = () => {
-    const minutes = parseInt(timerInput.value) || 0;
-    chrome.storage.sync.set({ enabled: enableToggle.checked });
-    if (enableToggle.checked && minutes > 0) {
-      const endTime = Date.now() + minutes * 60000;
-      chrome.storage.sync.set({ timerEnd: endTime });
-      // Alarm set in background
-    } else {
-      chrome.storage.sync.set({ timerEnd: null });
-      chrome.alarms.clear('timerExpire');
+  function updateUI() {
+    // Status
+    enableToggle.checked = state.enabled;
+    statusText.textContent = state.enabled ? "Enabled" : "Disabled";
+    statusText.style.color = state.enabled ? "#4CAF50" : "var(--muted)";
+
+    // List Select
+    activeListSelect.innerHTML = '';
+    Object.keys(state.lists).forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      if (name === state.activeList) option.selected = true;
+      activeListSelect.appendChild(option);
+    });
+
+    // Labels
+    favListName.textContent = state.activeList;
+
+    // Lists
+    renderWhitelist();
+    renderFavorites();
+  }
+
+  // --- Tabs ---
+
+  function setupTabs() {
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+
+        tab.classList.add('active');
+        const panelId = tab.dataset.tab + 'Panel';
+        document.getElementById(panelId).classList.add('active');
+      });
+    });
+  }
+
+  // --- Event Listeners ---
+
+  function setupEventListeners() {
+    // Toggle Enable
+    enableToggle.addEventListener('change', () => {
+      state.enabled = enableToggle.checked;
+      chrome.storage.sync.set({ enabled: state.enabled });
+      updateUI();
+    });
+
+    // List Selection
+    activeListSelect.addEventListener('change', () => {
+      state.activeList = activeListSelect.value;
+      chrome.storage.sync.set({ activeList: state.activeList });
+      updateUI();
+    });
+
+    // Manage Lists Toggle
+    manageListsBtn.addEventListener('click', () => {
+      const isHidden = listManagement.style.display === 'none';
+      listManagement.style.display = isHidden ? 'flex' : 'none';
+    });
+
+    // Create List
+    createList.addEventListener('click', () => {
+      const name = newListName.value.trim();
+      if (name && !state.lists[name]) {
+        state.lists[name] = [];
+        state.favorites[name] = []; // Create corresponding favorites list
+        chrome.storage.sync.set({ lists: state.lists, favorites: state.favorites });
+        newListName.value = '';
+        loadData();
+      }
+    });
+
+    // Rename List
+    renameList.addEventListener('click', () => {
+      const newName = newListName.value.trim();
+      if (newName && newName !== state.activeList && !state.lists[newName]) {
+        // Move whitelist
+        state.lists[newName] = state.lists[state.activeList];
+        delete state.lists[state.activeList];
+
+        // Move favorites
+        state.favorites[newName] = state.favorites[state.activeList] || [];
+        delete state.favorites[state.activeList];
+
+        state.activeList = newName;
+        chrome.storage.sync.set({
+          lists: state.lists,
+          favorites: state.favorites,
+          activeList: state.activeList
+        });
+        newListName.value = '';
+        loadData();
+      }
+    });
+
+    // Delete List
+    deleteList.addEventListener('click', () => {
+      if (state.activeList === 'Default') {
+        alert('Cannot delete Default list.');
+        return;
+      }
+      if (confirm(`Delete "${state.activeList}"?`)) {
+        delete state.lists[state.activeList];
+        delete state.favorites[state.activeList];
+        state.activeList = Object.keys(state.lists)[0] || 'Default';
+        chrome.storage.sync.set({
+          lists: state.lists,
+          favorites: state.favorites,
+          activeList: state.activeList
+        });
+        loadData();
+      }
+    });
+
+    // --- Whitelist Actions ---
+
+    addSiteBtn.addEventListener('click', () => {
+      const url = siteInput.value.trim();
+      if (url) {
+        addToWhitelist(url);
+        siteInput.value = '';
+      }
+    });
+
+    addCurrentSite.addEventListener('click', () => {
+      getCurrentTabUrl((url) => {
+        if (url) addToWhitelist(url);
+      });
+    });
+
+    // --- Favorites Actions ---
+
+    addFavBtn.addEventListener('click', () => {
+      const url = favUrlInput.value.trim();
+      const title = favTitleInput.value.trim();
+      const icon = favIconInput.value.trim();
+      if (url) {
+        addFavorite(url, title, icon);
+        favUrlInput.value = '';
+        favTitleInput.value = '';
+        favIconInput.value = '';
+      }
+    });
+
+    addCurrentFav.addEventListener('click', () => {
+      getCurrentTabUrl((url, title, favIconUrl) => {
+        if (url) {
+          // Try to guess an icon or use default
+          const icon = "⭐";
+          addFavorite(url, title, icon);
+        }
+      });
+    });
+  }
+
+  // --- Logic Helpers ---
+
+  function getCurrentTabUrl(callback) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0]) return;
+      const tab = tabs[0];
+      let url = tab.url;
+
+      // Handle blocked pages redirection
+      if (url.startsWith(chrome.runtime.getURL(''))) {
+        const params = new URLSearchParams(new URL(url).search);
+        const original = params.get('url');
+        if (original) url = original;
+      }
+
+      try {
+        const u = new URL(url);
+        // For whitelist we want hostname usually, but let's pass full url or hostname depending on usage
+        // Here we pass full URL object info
+        callback(u.href, tab.title, tab.favIconUrl);
+      } catch (e) {
+        alert('Invalid URL');
+      }
+    });
+  }
+
+  function addToWhitelist(rawUrl) {
+    // Normalize
+    let domain = rawUrl;
+    try {
+      // If it doesn't have protocol, add https to parse
+      if (!/^https?:\/\//i.test(domain)) {
+        domain = 'https://' + domain;
+      }
+      const u = new URL(domain);
+      domain = u.hostname.replace(/^www\./, '');
+    } catch (e) {
+      // fallback
+      domain = rawUrl.replace(/^www\./, '');
     }
-  };
 
-  // Change active list
-  activeListSelect.onchange = () => {
-    activeList = activeListSelect.value;
-    chrome.storage.sync.set({ activeList });
-    loadWhitelist();
-  };
-
-  // Create new list
-  createList.onclick = () => {
-    const name = newListName.value.trim();
-    if (name && !lists[name]) {
-      lists[name] = [];
-      chrome.storage.sync.set({ lists });
-      newListName.value = '';
-      loadData();
+    const list = state.lists[state.activeList] || [];
+    // Check duplicate
+    if (list.some(item => (item.url || item.domain || item) === domain)) {
+      return; // Already exists
     }
-  };
 
-  // Rename list
-  renameList.onclick = () => {
-    const newName = newListName.value.trim();
-    if (newName && newName !== activeList && !lists[newName]) {
-      lists[newName] = lists[activeList];
-      delete lists[activeList];
-      activeList = newName;
-      chrome.storage.sync.set({ lists, activeList });
-      newListName.value = '';
-      loadData();
+    list.push({ url: domain, requireChallenge: false, challengeType: 'none' });
+    state.lists[state.activeList] = list;
+    chrome.storage.sync.set({ lists: state.lists }, renderWhitelist);
+  }
+
+  function removeFromWhitelist(index) {
+    const list = state.lists[state.activeList] || [];
+    list.splice(index, 1);
+    state.lists[state.activeList] = list;
+    chrome.storage.sync.set({ lists: state.lists }, renderWhitelist);
+  }
+
+  function addFavorite(url, title, icon) {
+    // Normalize URL
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
     }
-  };
 
-  // Delete list
-  deleteList.onclick = () => {
-    if (Object.keys(lists).length > 1 && confirm(`Delete "${activeList}"?`)) {
-      delete lists[activeList];
-      activeList = Object.keys(lists)[0];
-      chrome.storage.sync.set({ lists, activeList });
-      loadData();
-    }
-  };
+    const list = state.favorites[state.activeList] || [];
+    list.push({
+      url: url,
+      title: title || new URL(url).hostname,
+      icon: icon || "🔖"
+    });
+    state.favorites[state.activeList] = list;
+    chrome.storage.sync.set({ favorites: state.favorites }, renderFavorites);
+  }
 
-  // Load and display current whitelist
-  function loadWhitelist() {
-    const whitelist = lists[activeList] || [];
+  function removeFavorite(index) {
+    const list = state.favorites[state.activeList] || [];
+    list.splice(index, 1);
+    state.favorites[state.activeList] = list;
+    chrome.storage.sync.set({ favorites: state.favorites }, renderFavorites);
+  }
+
+  // --- Rendering ---
+
+  function renderWhitelist() {
     whitelistList.innerHTML = '';
-    whitelist.forEach((entry, idx) => {
-      const url = (entry && (entry.url || entry.domain)) || '';
-      const requireChallenge = !!(entry && entry.requireChallenge);
-      const challengeType = (entry && entry.challengeType) || (requireChallenge ? 'math' : 'none');
-      const challengeIntensity = (entry && entry.challengeIntensity) || 'medium';
+    const list = state.lists[state.activeList] || [];
+
+    if (list.length === 0) {
+      whitelistList.innerHTML = '<div class="empty-state">No allowed sites in this list.</div>';
+      return;
+    }
+
+    list.forEach((item, index) => {
+      const url = item.url || item.domain || item; // handle legacy strings
 
       const li = document.createElement('li');
+      li.innerHTML = `
+        <div class="list-content">
+          <div class="list-title">${url}</div>
+        </div>
+        <button class="btn-icon btn-delete" title="Remove">X</button>
+      `;
 
-      const text = document.createElement('span');
-      text.textContent = url;
-      text.className = 'whitelist-url';
-      li.appendChild(text);
-
-      // Challenge type selector
-      const typeSel = document.createElement('select');
-      ['none', 'math', 'reason', 'delay', 'typing'].forEach((t) => {
-        const o = document.createElement('option');
-        o.value = t;
-        o.textContent = t;
-        if (t === challengeType) o.selected = true;
-        typeSel.appendChild(o);
-      });
-      typeSel.dataset.index = idx;
-      typeSel.onchange = (e) => {
-        const i = Number(e.target.dataset.index);
-        const val = e.target.value;
-        const arr = lists[activeList] || [];
-        arr[i] = arr[i] || {};
-        arr[i].challengeType = val;
-        arr[i].requireChallenge = val !== 'none';
-        lists[activeList] = arr;
-        chrome.storage.sync.set({ lists }, () => loadWhitelist());
-      };
-      typeSel.className = 'sel-challenge-type';
-      li.appendChild(typeSel);
-
-      // Challenge intensity selector (only relevant when challengeType != 'none')
-      const intensitySel = document.createElement('select');
-      ['easy', 'medium', 'hard'].forEach((lvl) => {
-        const o = document.createElement('option');
-        o.value = lvl;
-        o.textContent = lvl;
-        if (lvl === challengeIntensity) o.selected = true;
-        intensitySel.appendChild(o);
-      });
-      intensitySel.dataset.index = idx;
-      intensitySel.onchange = (e) => {
-        const i = Number(e.target.dataset.index);
-        const val = e.target.value;
-        const arr = lists[activeList] || [];
-        arr[i] = arr[i] || {};
-        arr[i].challengeIntensity = val;
-        lists[activeList] = arr;
-        chrome.storage.sync.set({ lists });
-      };
-      intensitySel.className = 'sel-challenge-intensity';
-      intensitySel.style.marginLeft = '6px';
-      if (challengeType === 'none') intensitySel.style.display = 'none';
-      li.appendChild(intensitySel);
-
-      // Ensure intensity visibility toggles when type changes
-      typeSel.addEventListener('change', (e) => {
-        intensitySel.style.display = e.target.value === 'none' ? 'none' : '';
-      });
-
-      const remove = document.createElement('span');
-      remove.textContent = ' [Remove]';
-      remove.className = 'remove';
-      remove.onclick = () => removeSite(url);
-      li.appendChild(remove);
-
+      li.querySelector('.btn-delete').addEventListener('click', () => removeFromWhitelist(index));
       whitelistList.appendChild(li);
     });
   }
 
-  // Add manually
-  addButton.onclick = () => {
-    let site = siteInput.value.trim().toLowerCase();
-    if (site) {
-      site = site.replace(/^www\./, '');
-      addToWhitelist(site);
-      siteInput.value = '';
-    }
-  };
+  function renderFavorites() {
+    favoritesList.innerHTML = '';
+    const list = state.favorites[state.activeList] || [];
 
-  // Add current site's domain
-  addCurrent.onclick = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      let tabUrl = tabs[0].url;
-      if (tabUrl.startsWith(chrome.runtime.getURL(''))) {
-        const params = new URLSearchParams(new URL(tabUrl).search);
-        const original = params.get('url');
-        if (original) tabUrl = original;
-      }
-      try {
-        const url = new URL(tabUrl);
-        let domain = url.hostname.toLowerCase();
-        domain = domain.replace(/^www\./, '');
-        addToWhitelist(domain);
-      } catch (e) {
-        alert('Cannot add this site (invalid URL).');
-      }
+    if (list.length === 0) {
+      favoritesList.innerHTML = '<div class="empty-state">No favorites in this list.</div>';
+      return;
+    }
+
+    list.forEach((fav, index) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div style="font-size: 20px;">${fav.icon || '🔖'}</div>
+        <div class="list-content">
+          <div class="list-title">${fav.title}</div>
+          <div class="list-subtitle">${fav.url}</div>
+        </div>
+        <button class="btn-icon btn-delete" title="Remove">X</button>
+      `;
+
+      li.querySelector('.btn-delete').addEventListener('click', () => removeFavorite(index));
+      favoritesList.appendChild(li);
     });
-  };
-
-  // Helper to add domain if not already in current list
-  function addToWhitelist(domain) {
-    let whitelist = lists[activeList] || [];
-    if (!whitelist.some(e => (e && e.url) === domain)) {
-      whitelist.push({ url: domain, requireChallenge: false, challengeType: 'none' });
-      lists[activeList] = whitelist;
-      chrome.storage.sync.set({ lists });
-      loadWhitelist();
-    }
   }
 
-  // Remove site
-  function removeSite(site) {
-    let whitelist = lists[activeList] || [];
-    // site may be a url string; remove matching entries by url
-    whitelist = whitelist.filter(s => !s || s.url !== site);
-    lists[activeList] = whitelist;
-    chrome.storage.sync.set({ lists });
-    loadWhitelist();
-  }
-
-  loadData();
+  // Start
+  init();
 });
