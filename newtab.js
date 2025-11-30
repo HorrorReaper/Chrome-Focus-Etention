@@ -601,6 +601,98 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   switchTab("clock"); // default view
+
+  // ===== CLOCK SUBTABS =====
+  const subtabs = {
+    todos: document.getElementById("todosContent"),
+    favorites: document.getElementById("favoritesContent"),
+    calendar: document.getElementById("calendarContent"),
+  };
+  const subtabButtons = {
+    todos: document.getElementById("todosSubtab"),
+    favorites: document.getElementById("favoritesSubtab"),
+    calendar: document.getElementById("calendarSubtab"),
+  };
+
+  function switchSubtab(subtabName) {
+    // Hide all subtab content
+    Object.values(subtabs).forEach((el) => {
+      if (el) el.classList.add("hidden");
+    });
+    // Show selected subtab
+    if (subtabs[subtabName]) {
+      subtabs[subtabName].classList.remove("hidden");
+    }
+    // Update button states
+    Object.values(subtabButtons).forEach((btn) => {
+      if (btn) btn.classList.remove("active");
+    });
+    if (subtabButtons[subtabName]) {
+      subtabButtons[subtabName].classList.add("active");
+    }
+    // If calendar, render it
+    if (subtabName === "calendar") {
+      loadGoogleCalendar();
+    }
+  }
+
+  // Attach subtab button handlers
+  if (subtabButtons.todos) subtabButtons.todos.onclick = () => switchSubtab("todos");
+  if (subtabButtons.favorites) subtabButtons.favorites.onclick = () => switchSubtab("favorites");
+  if (subtabButtons.calendar) subtabButtons.calendar.onclick = () => switchSubtab("calendar");
+
+
+  // ===== GOOGLE CALENDAR IFRAME =====
+  function loadGoogleCalendar() {
+    const iframe = document.getElementById("googleCalendarIframe");
+    const placeholder = document.getElementById("calendarPlaceholder");
+    
+    if (!iframe || !placeholder) return;
+
+    chrome.storage.sync.get(["googleCalendarUrl"], (data) => {
+      const url = data.googleCalendarUrl;
+      
+      if (url && url.trim()) {
+        iframe.src = url.trim();
+        iframe.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+      } else {
+        iframe.classList.add("hidden");
+        placeholder.classList.remove("hidden");
+      }
+    });
+  }
+
+  // Load Google Calendar URL into settings input on page load
+  const calendarUrlInput = document.getElementById("googleCalendarUrl");
+  if (calendarUrlInput) {
+    chrome.storage.sync.get(["googleCalendarUrl"], (data) => {
+      calendarUrlInput.value = data.googleCalendarUrl || "";
+    });
+
+    // Auto-save Google Calendar URL when input changes
+    calendarUrlInput.addEventListener("blur", () => {
+      const url = calendarUrlInput.value.trim();
+      chrome.storage.sync.set({ googleCalendarUrl: url }, () => {
+        console.log("Google Calendar URL saved:", url);
+        const calendarContent = document.getElementById("calendarContent");
+        if (calendarContent && !calendarContent.classList.contains("hidden")) {
+          loadGoogleCalendar();
+        }
+      });
+    });
+    
+    calendarUrlInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        calendarUrlInput.blur();
+      }
+    });
+  }
+
+
+  // Initialize with todos subtab
+  switchSubtab("todos");
+
 });
 
 

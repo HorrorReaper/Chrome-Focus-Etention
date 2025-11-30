@@ -43,28 +43,58 @@
         <p id="quoteText" class="quote-text">"Loading quote..."</p>
         <p id="quoteAuthor" class="quote-author">— Author</p>
       </div>
-      <div class="card todo-card">
-        <div class="card-header">
-          <div class="card-title">
-            To‑Do List for <span id="todoListName">Default</span>
-          </div>
-        </div>
-        <div class="todo-input-row">
-          <input type="text" id="newTodoInput" class="text-input" placeholder="Enter a task..." />
-          <button id="addTodoButton" class="primary-btn">Add Task</button>
-        </div>
-        <ul id="todoList" class="todo-list2 todo-list"></ul>
+
+      <!-- SUBTAB NAVIGATION FOR CLOCK PANEL -->
+      <div class="clock-subtabs">
+        <button id="todosSubtab" class="subtab-btn active">Todos</button>
+        <button id="favoritesSubtab" class="subtab-btn">Favorites</button>
+        <button id="calendarSubtab" class="subtab-btn">Calendar</button>
       </div>
 
-      <!-- Favorites Display -->
-      <div class="card favorites-card" style="margin-top: 20px;">
-        <div class="card-header">
-          <div class="card-title">
-            Favorites (<span id="favListName">Default</span>)
+      <!-- TODOS SUBTAB CONTENT -->
+      <div id="todosContent" class="subtab-content">
+        <div class="card todo-card">
+          <div class="card-header">
+            <div class="card-title">
+              To‑Do List for <span id="todoListName">Default</span>
+            </div>
+          </div>
+          <div class="todo-input-row">
+            <input type="text" id="newTodoInput" class="text-input" placeholder="Enter a task..." />
+            <button id="addTodoButton" class="primary-btn">Add Task</button>
+          </div>
+          <ul id="todoList" class="todo-list2 todo-list"></ul>
+        </div>
+      </div>
+
+      <!-- FAVORITES SUBTAB CONTENT -->
+      <div id="favoritesContent" class="subtab-content hidden">
+        <div class="card favorites-card">
+          <div class="card-header">
+            <div class="card-title">
+              Favorites (<span id="favListName">Default</span>)
+            </div>
+          </div>
+          <div id="favoriteLinks" class="favorites-grid"
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; padding: 10px;">
           </div>
         </div>
-        <div id="favoriteLinks" class="favorites-grid"
-          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; padding: 10px;">
+      </div>
+
+      <!-- CALENDAR SUBTAB CONTENT -->
+      <div id="calendarContent" class="subtab-content hidden">
+        <div class="card calendar-card">
+          <div class="card-header">
+            <div class="card-title">Google Calendar</div>
+          </div>
+          <div id="calendarContainer" class="calendar-iframe-container">
+            <div id="calendarPlaceholder" class="calendar-placeholder">
+              <p>📅</p>
+              <p>No calendar configured</p>
+              <p class="placeholder-hint">Add your Google Calendar embed URL in Settings</p>
+            </div>
+            <iframe id="googleCalendarIframe" class="calendar-iframe hidden" frameborder="0" scrolling="no"></iframe>
+          </div>
         </div>
       </div>
     </section>
@@ -103,141 +133,129 @@
       <div class="settings-section" style="display: none;">
         <h3 class="section-title">Favorites in "<span id="currentFavListName"></span>"</h3>
         <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
-          <input type="text" id="newFavUrl" class="text-input" placeholder="https://example.com"
-            style="flex: 1; min-width: 200px;" />
-          <input type="text" id="newFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
-          <input type="text" id="newFavIcon" class="text-input" placeholder="🔖"
-            style="width: 60px; text-align: center;" maxlength="2" />
+          <input type="text" id="newFavUrl" class="text-input" placeholder="URL (e.g. github.com)"
+            style="flex: 2; min-width: 120px;" />
+          <input type="text" id="newFavTitle" class="text-input" placeholder="Title" style="flex: 1; min-width: 80px;" />
+          <input type="text" id="newFavIcon" class="text-input" placeholder="Emoji" style="width: 60px;" />
           <button id="addFavButton" class="primary-btn">Add Favorite</button>
         </div>
         <ul id="favList" class="fav-list"></ul>
       </div>
     </section>
 
-    <!-- NOTES TAB -->
-    <section id="notesPanel" class="panel hidden">
-      <h3 class="section-title">Notes</h3>
-      <textarea id="notesTextarea" class="text-input" placeholder="Write your notes here..."
-        style="width: 100%; min-height: 150px; resize: vertical;"></textarea>
-    </section>
-
     <!-- SETTINGS TAB -->
     <section id="settingsPanel" class="panel hidden">
       <div class="card settings-card">
-        <div class="card-title">Timer & Lists</div>
-
-        <div class="settings-row">
-          <label class="settings-label" for="listSelect">Active List</label>
-          <div class="select-with-action">
-            <select id="listSelect" class="select-input"></select>
-            <button id="configureListButton" class="secondary-btn">Configure</button>
-          </div>
-        </div>
-        <div id="listEditorPanel" class="hidden">
-          <div class="settings-row list-management">
-            <label class="settings-label">Manage Lists</label>
-            <div class="list-controls">
-              <input type="text" id="newListName" class="text-input" placeholder="New list name" />
-              <button id="createList" class="secondary-btn createListButton">Create</button>
-              <button id="renameList" class="secondary-btn">Rename</button>
-              <button id="deleteList" class="warn-btn">Delete</button>
-            </div>
-          </div>
-          <div class="settings-row list-urls">
-            <label class="settings-label">URLs in list</label><br>
-          </div>
-          <div class="settings-row list-urls" style="display: block;">
-            <ul id="settingsDomainList" class="whitelist-list"></ul>
-            <div class="url-controls">
-              <input type="text" id="newListUrl" class="text-input"
-                placeholder="example.com or https://site.com/path" />
-              <button id="addListUrlButton" class="secondary-btn">Add URL</button>
-            </div>
-          </div>
+        <div class="card-header">
+          <div class="card-title">Timer & Lists</div>
         </div>
 
         <div class="settings-row">
-          <label class="settings-label" for="timerInput">
-            Default timer (minutes, 0 = unlimited)
-          </label>
-          <input type="number" id="settingsTimerInput" class="number-input" min="0" value="25" disabled />
+          <span class="settings-label">Active List</span>
+          <select id="listSelect" class="select-input"></select>
+          <button id="configureListButton" class="secondary-btn">Configure</button>
+        </div>
+
+        <!-- List editor panel (hidden by default) -->
+        <div id="listEditorPanel" class="list-editor-panel hidden">
+          <div class="settings-row" style="margin-top:14px;">
+            <span class="settings-label">Manage Lists</span>
+            <input type="text" id="newListName" class="text-input" placeholder="New list name" style="flex:1;" />
+            <button id="createList" class="secondary-btn">Create</button>
+            <button id="renameList" class="secondary-btn">Rename</button>
+            <button id="deleteList" class="warn-btn">Delete</button>
+          </div>
+
+          <div class="settings-row" style="margin-top: 14px;">
+            <span class="settings-label">URLs in list</span>
+            <input type="text" id="newListUrl" class="text-input" placeholder="domain.com" style="flex:1;" />
+            <button id="addListUrlButton" class="primary-btn">Add URL</button>
+          </div>
+          <ul id="settingsDomainList" class="whitelist-list" style="margin-top: 10px;"></ul>
+        </div>
+
+        <div class="settings-row settings-toggle">
+          <span class="settings-label">Default timer (minutes, 0 = unlimited)</span>
+          <input type="number" id="timerInput2" class="number-input" min="0" value="25" />
           <span class="settings-hint">(uses same value as focus timer)</span>
         </div>
 
         <div class="settings-row settings-toggle">
-          <label class="settings-label" for="pomodoroToggle">
-            Enable Pomodoro Mode
-          </label>
+          <span class="settings-label">Enable Pomodoro Mode</span>
           <input type="checkbox" id="pomodoroToggle" />
         </div>
 
         <div id="pomodoroOptions" class="pomodoro-options hidden">
           <div class="settings-row">
-            <label class="settings-label" for="pomodoroWork">Work (min)</label>
-            <input type="number" id="pomodoroWork" class="number-input" min="1" value="25" />
+            <span class="settings-label">Work (min)</span>
+            <input type="number" id="pomodoroWork" class="number-input" min="1" />
           </div>
           <div class="settings-row">
-            <label class="settings-label" for="pomodoroBreak">Break (min)</label>
-            <input type="number" id="pomodoroBreak" class="number-input" min="1" value="5" />
+            <span class="settings-label">Break (min)</span>
+            <input type="number" id="pomodoroBreak" class="number-input" min="1" />
           </div>
           <div class="settings-row">
-            <label class="settings-label" for="pomodoroLongBreak">
-              Long Break (min)
-            </label>
-            <input type="number" id="pomodoroLongBreak" class="number-input" min="1" value="15" />
+            <span class="settings-label">Long Break (min)</span>
+            <input type="number" id="pomodoroLongBreak" class="number-input" min="1" />
           </div>
-        </div>
-        <div class="settings-row">
-          <label class="settings-label" for="youtubeBgUrl">
-            YouTube background (optional)
-          </label>
-          <input type="text" id="youtubeBgUrl" class="text-input"
-            placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
         </div>
 
         <div class="settings-row settings-toggle">
-          <label class="settings-label" for="useYoutubeBg">
-            Use YouTube video as background
-          </label>
-          <input type="checkbox" id="useYoutubeBg" />
+          <span class="settings-label">YouTube background (optional)</span>
+          <input type="text" id="youtubeBgUrl" class="text-input" placeholder="YouTube video URL" style="flex: 1;" />
         </div>
         <div class="settings-row settings-toggle">
-          <label class="settings-label" for="enableMathChallenge">
-            Require math challenge to unlock blocked sites
-          </label>
+          <span class="settings-label">Use YouTube video as background</span>
+          <input type="checkbox" id="useYoutubeBg" />
+        </div>
+
+        <div class="settings-row settings-toggle">
+          <span class="settings-label">Require math challenge to unlock blocked sites</span>
           <input type="checkbox" id="enableMathChallenge" />
         </div>
 
-        <!-- URL Management -->
-        <div class="settings-section">
+        <div class="settings-section" style="margin-top: 24px;">
+          <h3 class="section-title" style="margin-bottom: 12px;">URLs in list</h3>
           <div class="settings-row" style="gap: 8px;">
-            <input type="text" id="newUrlInput" class="text-input" placeholder="example.com" style="flex: 1;" />
-            <button id="addUrlButton" class="primary-btn">Add URL</button>
+            <input type="text" id="settingsNewUrl" class="text-input" placeholder="example.com" style="flex: 1;" />
+            <button id="settingsAddUrlButton" class="primary-btn">Add URL</button>
           </div>
-          <ul id="urlList" class="url-list"></ul>
+        </div>
+        <div class="settings-row settings-toggle" style="margin-top: 14px;">
+          <span class="settings-label">Google Calendar embed URL</span>
+          <input type="text" id="googleCalendarUrl" class="text-input" placeholder="Paste your Google Calendar embed URL" style="flex: 1;" />
+        </div>
+        <div class="settings-hint" style="margin-top: 4px; text-align: left;">
+          Get it from Google Calendar → Settings → Integrate calendar → Embed code (copy the src URL)
         </div>
 
-        <!-- NEW: Favorites Management -->
-        <div class="settings-section">
-          <h3 class="section-title">Favorites</h3>
+        <div class="settings-section" style="margin-top: 24px;">
+          <h3 class="section-title" style="margin-bottom: 12px;">Favorites</h3>
           <div class="settings-row" style="gap: 8px; flex-wrap: wrap;">
-            <input type="text" id="settingsNewFavUrl" class="text-input" placeholder="https://example.com"
-              style="flex: 1; min-width: 200px;" />
-            <input type="text" id="settingsNewFavTitle" class="text-input" placeholder="Title" style="width: 150px;" />
-            <input type="text" id="settingsNewFavIcon" class="text-input" placeholder="🔖"
-              style="width: 60px; text-align: center;" maxlength="2" />
+            <input type="text" id="settingsNewFavUrl" class="text-input" placeholder="URL (e.g. github.com)"
+              style="flex: 2; min-width: 120px;" />
+            <input type="text" id="settingsNewFavTitle" class="text-input" placeholder="Title"
+              style="flex: 1; min-width: 80px;" />
+            <input type="text" id="settingsNewFavIcon" class="text-input" placeholder="Emoji" style="width: 60px;" />
             <button id="settingsAddFavButton" class="primary-btn">Add Favorite</button>
           </div>
           <ul id="settingsFavList" class="fav-list"></ul>
         </div>
 
-        <button id="saveSettings" class="primary-btn full-width">
-          Save Settings
-        </button>
+        <button id="saveSettings" class="primary-btn full-width">Save Settings</button>
+      </div>
+    </section>
+
+    <!-- NOTES TAB -->
+    <section id="notesPanel" class="panel hidden">
+      <div class="card notes-card">
+        <div class="card-header">
+          <div class="card-title">Notes</div>
+        </div>
+        <textarea id="notesTextarea" class="notes-area" placeholder="Write your notes here..."></textarea>
       </div>
     </section>
   </main>
-
 
   <script type="module" src="newtab.js"></script>
 </body>
