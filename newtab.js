@@ -646,12 +646,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadGoogleCalendar() {
     const iframe = document.getElementById("googleCalendarIframe");
     const placeholder = document.getElementById("calendarPlaceholder");
-    
+
     if (!iframe || !placeholder) return;
 
     chrome.storage.sync.get(["googleCalendarUrl"], (data) => {
       const url = data.googleCalendarUrl;
-      
+
       if (url && url.trim()) {
         iframe.src = url.trim();
         iframe.classList.remove("hidden");
@@ -681,7 +681,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     });
-    
+
     calendarUrlInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         calendarUrlInput.blur();

@@ -9,7 +9,8 @@
     "storage",
     "tabs",
     "alarms",
-    "activeTab"
+    "activeTab",
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -26,8 +27,14 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "blocked.html",
+        "images/sounds/chime100.mp3",
+        "offscreen.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

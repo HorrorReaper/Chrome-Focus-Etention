@@ -216,6 +216,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     });
   }
   chrome.runtime.sendMessage({ type: "stateUpdate" }).catch(() => { });
+  chrome.runtime.sendMessage({ type: "timerEnded" }).catch(() => { });
+  playTimerSound().catch(e => console.error('Failed to play sound:', e));
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -446,6 +448,9 @@ async function updateBlockRule() {
   const ruleId = 1;
   const oldRules = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = oldRules.map((rule) => rule.id);
+  if (!removeRuleIds.includes(ruleId)) {
+    removeRuleIds.push(ruleId);
+  }
 
   const now = Date.now();
 
@@ -514,7 +519,6 @@ async function updateBlockRule() {
   });
 }
 
-
 function setAlarm(minutes) {
   if (minutes > 0) {
     chrome.alarms.clear("timerExpire");
@@ -522,4 +526,31 @@ function setAlarm(minutes) {
     const endTime = Date.now() + minutes * 60000;
     chrome.storage.sync.set({ timerEnd: endTime });
   }
+}
+
+async function playTimerSound() {
+  const offscreenUrl = chrome.runtime.getURL('offscreen.html');
+  const soundUrl = chrome.runtime.getURL('images/sounds/chime100.mp3');
+
+  // Check if offscreen document exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    documentUrls: [offscreenUrl]
+  });
+
+  if (existingContexts.length === 0) {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['AUDIO_PLAYBACK'],
+      justification: 'Play timer notification sound',
+    });
+    // Wait for the offscreen document to initialize
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  console.log('[background] Sending play-sound message', soundUrl);
+  chrome.runtime.sendMessage({
+    type: 'play-sound',
+    target: soundUrl
+  });
 }
